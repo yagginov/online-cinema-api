@@ -33,6 +33,23 @@ services:
     networks:
       - cinema_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cinema
+    ports:
+      - "6379:6379"
+    networks:
+      - cinema_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_cinema_data:/data
+
   web:
     restart: always
     build: .
@@ -70,10 +87,52 @@ services:
     networks:
       - cinema_network
 
+  celery_worker:
+    build: .
+    container_name: celery_worker_cinema
+    command: [ "/bin/bash", "/commands/run_celery_worker.sh" ]
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/usr/src/fastapi
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/usr/src/fastapi
+    networks:
+      - cinema_network
+    restart: on-failure
+
+  celery_beat:
+    build: .
+    container_name: celery_beat_cinema
+    command: [ "/bin/bash", "/commands/run_celery_beat.sh" ]
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/usr/src/fastapi
+      - LOG_LEVEL=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/usr/src/fastapi
+    networks:
+      - cinema_network
+    restart: on-failure
+
 volumes:
   postgres_cinema_data:
     driver: local
   pgadmin_cinema_data:
+    driver: local
+  redis_cinema_data:
     driver: local
 
 networks:
