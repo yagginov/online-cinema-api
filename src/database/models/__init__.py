@@ -26,6 +26,6 @@ from .payments import (
     PaymentModel,
 )
 from .orders import (
-    OrderModel,
     OrderItemModel,
+    OrderModel,
 )
