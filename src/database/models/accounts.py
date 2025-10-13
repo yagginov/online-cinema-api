@@ -16,7 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from database import validators as db_validators
+from database.validators import accounts as validators
 from security import generate_secure_token, hash_password, verify_password
 
 from .base import Base
@@ -102,7 +102,7 @@ class User(Base):
         """
         Set the user's password after validating its strength and hashing it.
         """
-        db_validators.validate_password_strength(raw_password)
+        validators.validate_password_strength(raw_password)
         self.hashed_password = hash_password(raw_password)
 
     def verify_password(self, raw_password: str) -> bool:
@@ -113,7 +113,7 @@ class User(Base):
 
     @validates("email")
     def validate_email(self, key, value):
-        return db_validators.validate_email(value.lower())
+        return validators.validate_email(value.lower())
 
 
 class UserProfile(Base):
