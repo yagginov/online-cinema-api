@@ -1,7 +1,10 @@
-from celery import Celery
-from config import get_settings
+from typing import cast
 
-settings = get_settings()
+from celery import Celery
+
+from config import Settings, get_settings
+
+settings = cast(Settings, get_settings())
 
 celery_app = Celery(
     "online_cinema",
