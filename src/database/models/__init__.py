@@ -25,3 +25,7 @@ from .payments import (
     PaymentItemModel,
     PaymentModel,
 )
+from .orders import (
+    OrderModel,
+    OrderItemModel,
+)
