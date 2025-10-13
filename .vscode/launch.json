@@ -1,0 +1,76 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "FastAPI Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--reload"
+            ],
+            "cwd": "${workspaceFolder}/src",
+            "envFile": "${workspaceFolder}/.dev.env",
+            "jinja": true
+        },
+        {
+            "name": "FastAPI Run",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--reload"
+            ],
+            "cwd": "${workspaceFolder}/src",
+            "envFile": "${workspaceFolder}/.dev.env",
+            "jinja": true,
+            "justMyCode": false,
+            "console": "integratedTerminal",
+            "stopOnEntry": false
+        },
+        {
+            "name": "Create migration (with message)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "alembic",
+            "args": [
+                "-c",
+                "${workspaceFolder}/alembic.ini",
+                "revision",
+                "--autogenerate",
+                "-m",
+                "${input:migrationMessage}"
+            ],
+            "cwd": "${workspaceFolder}/src",
+            "envFile": "${workspaceFolder}/.dev.env",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Run migrations",
+            "type": "debugpy",
+            "request": "launch",
+        "module": "alembic",
+            "args": [
+                "-c",
+                "${workspaceFolder}/alembic.ini",
+                "upgrade",
+                "head"
+            ],
+            "cwd": "${workspaceFolder}/src",
+            "envFile": "${workspaceFolder}/.dev.env",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ],
+    "inputs": [
+        {
+            "id": "migrationMessage",
+            "type": "promptString",
+            "description": "Enter migration message",
+            "default": "new_changes"
+        }
+    ]
+}
