@@ -15,3 +15,11 @@ class CartResponseSchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+class CartUpdateRequestSchema(BaseModel):
+    cart_id: int
+    movie_id: int
+
+class CartUpdateResponseSchema(BaseModel):
+    id: int
+    movies: list[MovieModel]
