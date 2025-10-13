@@ -11,6 +11,6 @@ from .movies import (
     StarsMoviesModel,
 )
 from .orders import (
-    OrderModel,
     OrderItemModel,
+    OrderModel,
 )
