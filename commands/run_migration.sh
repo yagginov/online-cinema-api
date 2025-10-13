@@ -27,6 +27,15 @@ if ! psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt" | g
     echo "Applying all migrations..."
     alembic -c $ALEMBIC_CONFIG upgrade head
 
+    # Run database saver script only if POPULATE_DB env variable is set
+    if [ "$POPULATE_DB" = "1" ]; then
+        echo "Running database saver script..."
+        python -m database.populate
+        echo "Database saver script completed."
+    else
+        echo "POPULATE_DB not set. Skipping database population."
+    fi
+
     exit 0
 fi
 
@@ -50,4 +59,13 @@ if grep -qE '^\s*pass\s*$' "$LAST_MIGRATION"; then
 else
     echo "Changes detected. Applying migration."
     alembic -c $ALEMBIC_CONFIG upgrade head
+fi
+
+# Run database saver script only if POPULATE_DB env variable is set
+if [ "$POPULATE_DB" = "1" ]; then
+    echo "Running database saver script..."
+    python -m database.populate
+    echo "Database saver script completed."
+else
+    echo "POPULATE_DB not set. Skipping database population."
 fi

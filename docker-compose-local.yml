@@ -46,6 +46,7 @@ services:
       - .env
     environment:
       - PYTHONPATH=/usr/src/fastapi
+      - POPULATE_DB=1
     networks:
       - cinema_network
 
