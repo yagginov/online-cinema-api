@@ -22,7 +22,7 @@ RUN python -m pip install --upgrade pip && \
 # Copy dependency files
 COPY ./poetry.lock /usr/src/poetry/poetry.lock
 COPY ./pyproject.toml /usr/src/poetry/pyproject.toml
-COPY ./alembic.ini /usr/src/alembic/alembic.ini
+COPY ./alembic-docker.ini /usr/src/alembic/alembic.ini
 
 # Configure Poetry to avoid creating a virtual environment
 RUN poetry config virtualenvs.create false
