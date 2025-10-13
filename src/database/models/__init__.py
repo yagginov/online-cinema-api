@@ -10,3 +10,7 @@ from .movies import (
     StarModel,
     StarsMoviesModel,
 )
+from .payments import (
+    PaymentItemModel,
+    PaymentModel,
+)
