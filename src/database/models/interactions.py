@@ -1,7 +1,7 @@
 import enum
-from typing import List
+from typing import List, Optional, Text
 
-from sqlalchemy import Enum, Column, Integer, String, Boolean, ForeignKey, DateTime, func
+from sqlalchemy import Enum, Column, Integer, String, Boolean, ForeignKey, DateTime, func, Date, UniqueConstraint
 from datetime import datetime, date, timedelta, timezone
 from sqlalchemy.orm import (
     Mapped,
@@ -55,3 +55,27 @@ class  User(Base):
 
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
+
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(100))
+    last_name: Mapped[Optional[str]] = mapped_column(String(100))
+    avatar: Mapped[Optional[str]] = mapped_column(String(255))
+    gender: Mapped[Optional[GenderEnum]] = mapped_column(Enum(GenderEnum))
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date)
+    info: Mapped[Optional[str]] = mapped_column(Text)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True)
+    user: Mapped[User] = relationship("User", back_populates="profile")
+
+    def __repr__(self):
+        return (
+            f"<UserProfileModel(id={self.id}, first_name={self.first_name}, last_name={self.last_name}, "
+            f"gender={self.gender}, date_of_birth={self.date_of_birth})>"
+        )
