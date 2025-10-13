@@ -1,16 +1,18 @@
 import enum
-from typing import List, Optional, Text
+from typing import List, Optional
+from sqlalchemy import Text
 
-from sqlalchemy import Enum, Column, Integer, String, Boolean, ForeignKey, DateTime, func, Date, UniqueConstraint
+
+from sqlalchemy import Enum, Integer, String, Boolean, ForeignKey, DateTime, func, Date
 from datetime import datetime, date, timedelta, timezone
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship,
-    validates
+    relationship
 )
 
 from src.database import Base
+from src.security.utils import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -56,6 +58,12 @@ class  User(Base):
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
 
+    activation_token: Mapped[Optional["ActivationToken"]] = relationship(
+        "ActivationToken",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
@@ -79,3 +87,25 @@ class UserProfile(Base):
             f"<UserProfileModel(id={self.id}, first_name={self.first_name}, last_name={self.last_name}, "
             f"gender={self.gender}, date_of_birth={self.date_of_birth})>"
         )
+
+
+class ActivationToken(Base):
+    __tablename__ = "activation_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    user: Mapped[User] = relationship("User", back_populates="activation_token")
+    token: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False,
+        default=generate_secure_token
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc) + timedelta(days=1)
+    )
+
+    def __repr__(self):
+        return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
