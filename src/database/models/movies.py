@@ -5,7 +5,6 @@ from sqlalchemy import (
     CHAR,
     DECIMAL,
     INT,
-    UUID,
     Column,
     Float,
     ForeignKey,
