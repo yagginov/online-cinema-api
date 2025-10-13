@@ -1,6 +1,5 @@
 import os
 
-from .models.base import Base
 from .session_sqlite import reset_sqlite_database as reset_database
 
 environment = os.getenv("ENVIRONMENT", "developing")
