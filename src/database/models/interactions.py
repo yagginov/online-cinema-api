@@ -54,8 +54,8 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    group_id: Mapped[int] = mapped_column(ForeignKey("user_groups.id"), ondelete="CASCADE", nullable=False)
-    group: Mapped["UserGroup"] = relationship("UserGroup", back_populates="users")
+    group_id: Mapped[int] = mapped_column(ForeignKey("user_groups.id"), nullable=False)
+    group: Mapped["UserGroup"] = relationship("UserGroup",  cascade="all, delete", back_populates="users")
 
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"
