@@ -6,4 +6,4 @@ cd /usr/src/fastapi
 
 rm -f celerybeat.pid
 
-celery -A celery_app beat --loglevel=info
+celery -A celery_background.app beat --loglevel=info
