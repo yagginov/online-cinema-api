@@ -1,7 +1,6 @@
 import enum
 from typing import List, Optional
-from sqlalchemy import Text
-
+from sqlalchemy import Text, UniqueConstraint
 
 from sqlalchemy import Enum, Integer, String, Boolean, ForeignKey, DateTime, func, Date
 from datetime import datetime, date, timedelta, timezone
@@ -82,6 +81,8 @@ class UserProfile(Base):
         unique=True)
     user: Mapped[User] = relationship("User", back_populates="profile")
 
+    __table_args__ = (UniqueConstraint("user_id"),)
+
     def __repr__(self):
         return (
             f"<UserProfileModel(id={self.id}, first_name={self.first_name}, last_name={self.last_name}, "
@@ -106,6 +107,8 @@ class ActivationToken(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc) + timedelta(days=1)
     )
+
+    __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
         return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
