@@ -19,6 +19,5 @@ from .interactions import (
     TokenBase,
     ActivationToken,
     PasswordResetToken,
-    RefreshToken
+    RefreshToken,
 )
-
