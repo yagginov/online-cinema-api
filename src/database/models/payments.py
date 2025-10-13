@@ -35,7 +35,7 @@ class PaymentModel(Base):
         Index("ix_payments_ext_id", "external_payment_id"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Payment(id={self.id}, order_id={self.order_id}, status={self.status}, amount={self.amount})>"
 
 
@@ -54,7 +54,7 @@ class PaymentItemModel(Base):
 
     __table_args__ = (UniqueConstraint("payment_id", "order_item_id", name="uq_payment_item"),)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<PaymentItem(payment_id={self.payment_id}, "
             f"order_item_id={self.order_item_id}, price={self.price_at_payment})>"
