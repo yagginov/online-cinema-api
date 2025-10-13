@@ -10,3 +10,15 @@ from .movies import (
     StarModel,
     StarsMoviesModel,
 )
+from .interactions import (
+    UserGroupEnum,
+    GenderEnum,
+    UserGroup,
+    User,
+    UserProfile,
+    TokenBase,
+    ActivationToken,
+    PasswordResetToken,
+    RefreshToken
+)
+
