@@ -14,6 +14,27 @@ class MovieSortByEnum(str, Enum):
 
 
 class MovieFilterParams(BasePaginationParams, BaseSortParams):
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "page": 1,
+                    "per_page": 10,
+                    "year_from": 2020,
+                    "year_to": 2024,
+                    "min_imdb": 7.0,
+                    "max_imdb": 10.0,
+                    "min_price": 5.99,
+                    "max_price": 19.99,
+                    "genre_ids": "1,2,5",
+                    "certification_id": 3,
+                    "sort_by": "imdb",
+                    "sort_order": "desc"
+                }
+            ]
+        }
+    }
+
     year_from: Optional[int] = Field(None, ge=1900, le=2100)
     year_to: Optional[int] = Field(None, ge=1900, le=2100)
 
