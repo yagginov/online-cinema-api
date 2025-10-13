@@ -1,6 +1,5 @@
 import os
 
-from database.models.base import Base
 from database.models.accounts import (
     ActivationToken,
     PasswordResetToken,
@@ -9,6 +8,7 @@ from database.models.accounts import (
     UserGroup,
     UserProfile,
 )
+from database.models.base import Base
 from database.session_sqlite import reset_sqlite_database as reset_database
 from database.validators import accounts as validators
 
