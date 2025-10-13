@@ -1,5 +1,4 @@
-from .base import Base
-from .interactions import (
+from .accounts import (
     ActivationToken,
     GenderEnum,
     PasswordResetToken,
@@ -10,6 +9,7 @@ from .interactions import (
     UserGroupEnum,
     UserProfile,
 )
+from .base import Base
 from .movies import (
     GUID,
     CertificationModel,
