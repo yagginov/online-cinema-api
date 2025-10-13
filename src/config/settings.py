@@ -22,6 +22,30 @@ class Settings(BaseAppSettings):
         env_file_encoding="utf-8",
     )
 
+    # Redis
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_DB: int = int(os.getenv("REDIS_DB", 0))
+
+    # Celery
+    CELERY_BROKER_URL: str = os.getenv(
+        "CELERY_BROKER_URL",
+        f"redis://{os.getenv('REDIS_HOST', 'localhost')}:6379/0"
+    )
+    CELERY_RESULT_BACKEND: str = os.getenv(
+        "CELERY_RESULT_BACKEND",
+        f"redis://{os.getenv('REDIS_HOST', 'localhost')}:6379/0"
+    )
+
+    # Stripe
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+    @property
+    def REDIS_URL(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
 
 class TestingSettings(BaseAppSettings):
 
