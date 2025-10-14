@@ -8,6 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models import Base
 from enums.payment_enums import PaymentStatus
 
+from .accounts import User
+from .orders import OrderItemModel, OrderModel
+
 
 class PaymentModel(Base):
     __tablename__ = "payments"
@@ -25,8 +28,8 @@ class PaymentModel(Base):
     items: Mapped[list["PaymentItemModel"]] = relationship(
         "PaymentItemModel", back_populates="payment", cascade="all, delete-orphan"
     )
-    order = relationship("OrderModel")
-    user = relationship("User", back_populates="payments")
+    order: Mapped["OrderModel"] = relationship("OrderModel", backref="payments")
+    user: Mapped["User"] = relationship("User", backref="payments")
 
     __table_args__ = (
         Index("ix_payments_status", "status"),
@@ -48,7 +51,7 @@ class PaymentItemModel(Base):
     price_at_payment: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
 
     payment: Mapped[PaymentModel] = relationship("PaymentModel", back_populates="items")
-    order_item = relationship("OrderItemModel")
+    order_item: Mapped["OrderItemModel"] = relationship("OrderItemModel", backref="payment_items")
 
     __table_args__ = (UniqueConstraint("payment_id", "order_item_id", name="uq_payment_item"),)
 
