@@ -44,7 +44,7 @@ class MovieFilterParams(BasePaginationParams, BaseSortParams):
     min_price: Optional[float] = Field(None, ge=0.0)
     max_price: Optional[float] = Field(None, ge=0.0)
 
-    genre_ids: Optional[str]
+    genre_ids: Optional[str] = None
     certification_id: Optional[int] = Field(None, ge=1)
 
     sort_by: MovieSortByEnum = Field(default=MovieSortByEnum.IMDB)
