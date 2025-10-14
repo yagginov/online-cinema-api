@@ -20,7 +20,7 @@ class OrderModel(Base):
     )
     total_amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=True)
     items: Mapped[list["OrderItemModel"]] = relationship(
-        ":OrderItemModel", back_populates="order", cascade="all, delete-orphan"
+        "OrderItemModel", back_populates="order", cascade="all, delete-orphan"
     )
     user = relationship("User", back_populates="orders")
     __table_args__ = (
