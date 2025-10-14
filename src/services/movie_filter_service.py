@@ -27,9 +27,7 @@ class MovieFilterService:
         genre_ids = filters.get_genre_ids_list()
         if genre_ids:
             for genre_id in genre_ids:
-                stmt = stmt.where(
-                    MovieModel.genres.any(GenreModel.id == genre_id)
-                )
+                stmt = stmt.where(MovieModel.genres.any(GenreModel.id == genre_id))
         return stmt
 
     @staticmethod
@@ -53,9 +51,7 @@ class MovieFilterService:
 
     @staticmethod
     async def get_filtered_movies(
-        db: AsyncSession,
-        filters: MovieFilterParams,
-        load_relationships: bool = True
+        db: AsyncSession, filters: MovieFilterParams, load_relationships: bool = True
     ) -> Tuple[List[MovieModel], int]:
 
         filters.validate_ranges()
