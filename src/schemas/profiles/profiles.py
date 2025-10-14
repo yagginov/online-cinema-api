@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from fastapi import File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, HttpUrl, field_validator
@@ -109,9 +110,9 @@ class ProfileCreateSchema(BaseModel):
 class ProfileResponseSchema(BaseModel):
     id: int
     user_id: int
-    first_name: str
-    last_name: str
-    gender: str
-    date_of_birth: date
-    info: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    info: Optional[str] = None
     avatar: HttpUrl
