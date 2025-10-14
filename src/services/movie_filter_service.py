@@ -69,7 +69,7 @@ class MovieFilterService:
         sorted_stmt = MovieFilterService.apply_sorting(
             filtered_stmt,
             filters.sort_by,
-            filters.sort_order
+            filters.sort_order,
         )
 
         offset = filters.get_offset()
@@ -80,7 +80,7 @@ class MovieFilterService:
                 joinedload(MovieModel.certification),
                 joinedload(MovieModel.genres),
                 joinedload(MovieModel.stars),
-                joinedload(MovieModel.directors)
+                joinedload(MovieModel.directors),
             )
 
         result = await db.execute(paginated_stmt)
