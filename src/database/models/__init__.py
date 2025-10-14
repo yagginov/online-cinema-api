@@ -21,11 +21,11 @@ from .movies import (
     StarModel,
     StarsMoviesModel,
 )
-from .payments import (
-    PaymentItemModel,
-    PaymentModel,
-)
 from .orders import (
     OrderItemModel,
     OrderModel,
+)
+from .payments import (
+    PaymentItemModel,
+    PaymentModel,
 )
