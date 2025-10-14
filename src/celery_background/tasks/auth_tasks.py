@@ -14,11 +14,7 @@ logger = get_task_logger(__name__)
 
 def _cleanup_expired_tokens(model_class: Type[Base], token_type: str) -> dict:
     with Session(sync_postgresql_engine) as session:
-        result = session.execute(
-            delete(model_class).where(
-                model_class.expires_at < func.now()
-            )
-        )
+        result = session.execute(delete(model_class).where(model_class.expires_at < func.now()))
         session.commit()
         deleted_count = result.rowcount
 
@@ -29,10 +25,7 @@ def _cleanup_expired_tokens(model_class: Type[Base], token_type: str) -> dict:
 @celery_app.task(name="cleanup_expired_activation_tokens")
 def cleanup_expired_activation_tokens():
     try:
-        return _cleanup_expired_tokens(
-            ActivationToken,
-            "activation_tokens"
-        )
+        return _cleanup_expired_tokens(ActivationToken, "activation_tokens")
     except Exception as e:
         logger.error(f"Error cleaning up activation tokens: {str(e)}")
         raise
@@ -41,10 +34,7 @@ def cleanup_expired_activation_tokens():
 @celery_app.task(name="cleanup_expired_password_reset_tokens")
 def cleanup_expired_password_reset_tokens():
     try:
-        return _cleanup_expired_tokens(
-            PasswordResetToken,
-            "password_reset_tokens"
-        )
+        return _cleanup_expired_tokens(PasswordResetToken, "password_reset_tokens")
     except Exception as e:
         logger.error(f"Error cleaning up password reset tokens: {str(e)}")
         raise
@@ -53,10 +43,7 @@ def cleanup_expired_password_reset_tokens():
 @celery_app.task(name="cleanup_expired_refresh_tokens")
 def cleanup_expired_refresh_tokens():
     try:
-        return _cleanup_expired_tokens(
-            RefreshToken,
-            "refresh_tokens"
-        )
+        return _cleanup_expired_tokens(RefreshToken, "refresh_tokens")
     except Exception as e:
         logger.error(f"Error cleaning up refresh tokens: {str(e)}")
         raise
