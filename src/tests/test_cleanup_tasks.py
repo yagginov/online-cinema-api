@@ -97,8 +97,8 @@ class TestCleanupActivationTokens:
         sync_db_session.commit()
 
         with patch(
-                "celery_background.tasks.auth_tasks.sync_postgresql_engine",
-                sync_db_session.bind,
+            "celery_background.tasks.auth_tasks.sync_postgresql_engine",
+            sync_db_session.bind,
         ):
             result = cleanup_expired_activation_tokens()
 
@@ -138,8 +138,8 @@ class TestCleanupActivationTokens:
             sync_db_session.commit()
 
         with patch(
-                "celery_background.tasks.auth_tasks.sync_postgresql_engine",
-                sync_db_session.bind,
+            "celery_background.tasks.auth_tasks.sync_postgresql_engine",
+            sync_db_session.bind,
         ):
             result = cleanup_expired_activation_tokens()
 
@@ -202,10 +202,7 @@ class TestCleanupRefreshTokens:
         sync_db_session.add(expired_token)
         sync_db_session.commit()
 
-        with patch(
-                "celery_background.tasks.auth_tasks.sync_postgresql_engine",
-                sync_db_session.bind
-        ):
+        with patch("celery_background.tasks.auth_tasks.sync_postgresql_engine", sync_db_session.bind):
             result = cleanup_expired_refresh_tokens()
 
         assert result["status"] == "success"
