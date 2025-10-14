@@ -9,7 +9,7 @@ def get_token(request: Request) -> str:
     :return: Extracted token string.
     :raises HTTPException: If Authorization header is missing or invalid.
     """
-    authorization: str = request.headers.get("Authorization")
+    authorization: str = str(request.headers.get("Authorization"))
 
     if not authorization:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header is missing")
