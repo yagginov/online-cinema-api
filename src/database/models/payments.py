@@ -17,7 +17,7 @@ class PaymentModel(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus, name="payment_status"), nullable=False, default=PaymentStatus.SUCCESSFUL
+        Enum(PaymentStatus, name="payment_status"), nullable=False, default=PaymentStatus.PENDING
     )
     amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
     external_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
