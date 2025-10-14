@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import DECIMAL, Enum, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import DECIMAL, Enum, ForeignKey, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,7 +16,7 @@ class PaymentModel(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, default=datetime.now(timezone.utc)
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus, name="payment_status"), nullable=False, default=PaymentStatus.SUCCESSFUL
