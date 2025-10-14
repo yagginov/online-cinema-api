@@ -9,7 +9,7 @@ from config.dependencies import get_jwt_auth_manager, get_s3_storage_client
 from database import get_db
 from database.models.accounts import GenderEnum, User, UserGroup, UserGroupEnum, UserProfile
 from exceptions import BaseSecurityError, S3FileUploadError
-from schemas.profiles import ProfileCreateSchema, ProfileResponseSchema
+from schemas.profiles.profiles import ProfileCreateSchema, ProfileResponseSchema
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
 from storages import S3StorageInterface
@@ -62,25 +62,25 @@ async def create_profile(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
     if user_id != token_user_id:
-        stmt = select(UserGroup).join(User).where(User.id == token_user_id)
-        result = await db.execute(stmt)
+        stmt_group = select(UserGroup).join(User).where(User.id == token_user_id)
+        result = await db.execute(stmt_group)
         user_group = result.scalars().first()
         if not user_group or user_group.name == UserGroupEnum.USER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="You don't have permission to edit this profile."
             )
 
-    stmt = select(User).where(User.id == user_id)
-    result = await db.execute(stmt)
-    user = result.scalars().first()
+    stmt_user = select(User).where(User.id == user_id)
+    result_user = await db.execute(stmt_user)
+    user = result_user.scalars().first()
     if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or not active.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or not active")
 
     stmt_profile = select(UserProfile).where(UserProfile.user_id == user.id)
     result_profile = await db.execute(stmt_profile)
     existing_profile = result_profile.scalars().first()
     if existing_profile:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already has a profile.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already has a profile")
 
     avatar_bytes = await profile_data.avatar.read()
     avatar_key = f"avatars/{user.id}_{profile_data.avatar.filename}"
@@ -107,7 +107,7 @@ async def create_profile(
     await db.commit()
     await db.refresh(new_profile)
 
-    avatar_url = await s3_client.get_file_url(new_profile.avatar)
+    avatar_url = await s3_client.get_file_url(new_profile.avatar) if new_profile.avatar else ""
 
     return ProfileResponseSchema(
         id=new_profile.id,
