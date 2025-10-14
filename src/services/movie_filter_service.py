@@ -1,10 +1,10 @@
 from typing import List, Tuple
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from database.models.movies import MovieModel, GenreModel
+from database.models.movies import GenreModel, MovieModel
 from filters.movie_filters import MovieFilterParams, MovieSortByEnum, SortOrderEnum
 
 
