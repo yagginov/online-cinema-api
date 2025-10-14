@@ -1,13 +1,13 @@
 from typing import Type
 
+from celery.utils.log import get_task_logger
 from sqlalchemy import delete, func
 from sqlalchemy.orm import Session
-from celery.utils.log import get_task_logger
 
 from celery_background.app import celery_app
-from database.session_postgresql import sync_postgresql_engine
 from database.models.accounts import ActivationToken, PasswordResetToken, RefreshToken
 from database.models.base import Base
+from database.session_postgresql import sync_postgresql_engine
 
 logger = get_task_logger(__name__)
 

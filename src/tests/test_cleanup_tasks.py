@@ -1,13 +1,15 @@
-import pytest
-
 from datetime import datetime, timezone
 from unittest.mock import patch
-from security import hash_password
 
-
-from sqlalchemy import select, func
+import pytest
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from celery_background.tasks.auth_tasks import (
+    cleanup_expired_activation_tokens,
+    cleanup_expired_password_reset_tokens,
+    cleanup_expired_refresh_tokens,
+)
 from database.models.accounts import (
     ActivationToken,
     PasswordResetToken,
@@ -16,11 +18,7 @@ from database.models.accounts import (
     UserGroup,
     UserGroupEnum,
 )
-from celery_background.tasks.auth_tasks import (
-    cleanup_expired_activation_tokens,
-    cleanup_expired_password_reset_tokens,
-    cleanup_expired_refresh_tokens,
-)
+from security import hash_password
 
 
 class TestCleanupActivationTokens:

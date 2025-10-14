@@ -6,17 +6,17 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from database.models.base import Base
 from database.models.accounts import (
-    User,
-    UserGroup,
-    UserGroupEnum,
     ActivationToken,
     PasswordResetToken,
     RefreshToken,
+    User,
+    UserGroup,
+    UserGroupEnum,
 )
+from database.models.base import Base
 
 TEST_DATABASE_URL_ASYNC = "sqlite+aiosqlite:///:memory:"
 TEST_DATABASE_URL_SYNC = "sqlite:///:memory:"
