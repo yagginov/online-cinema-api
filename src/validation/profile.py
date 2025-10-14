@@ -2,8 +2,8 @@ import re
 from datetime import date
 from io import BytesIO
 
-from PIL import Image
 from fastapi import UploadFile
+from PIL import Image
 
 from database.models.accounts import GenderEnum
 
