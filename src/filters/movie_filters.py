@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Optional, List
+from typing import List, Optional
+
 from pydantic import Field, field_validator
 
 from .base import BasePaginationParams, BaseSortParams, SortOrderEnum
