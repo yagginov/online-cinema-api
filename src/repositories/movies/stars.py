@@ -1,0 +1,18 @@
+from typing import Annotated
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database import get_db
+from database.models import StarModel
+from repositories.generic import AsyncRepository
+
+
+class StarRepository(AsyncRepository[StarModel]):
+    pass
+
+
+async def get_star_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return StarRepository(StarModel, db)
