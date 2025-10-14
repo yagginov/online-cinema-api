@@ -5,8 +5,8 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session
 
 from database.models.accounts import (
     ActivationToken,
@@ -24,16 +24,14 @@ TEST_DATABASE_URL_SYNC = "sqlite:///:memory:"
 test_async_engine = create_async_engine(TEST_DATABASE_URL_ASYNC, echo=False)
 test_sync_engine = create_engine(TEST_DATABASE_URL_SYNC, echo=False)
 
-TestAsyncSessionLocal = sessionmaker(
-    bind=test_async_engine,
+TestAsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
+    test_async_engine,
     class_=AsyncSession,
     expire_on_commit=False,
 )
 
-
 @pytest.fixture(scope="session")
 def event_loop():
-    """Створити event loop для всієї сесії тестів."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
