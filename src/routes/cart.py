@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models.cart import CartModel, CartItemModel
 from src.database import get_db
 
-from schemas.carts import CartResponseSchema, CartUpdateResponseSchema
+from schemas.carts import CartResponseSchema, CartUpdateResponseSchema, \
+    CartItemAddResponseSchema
 
 router = APIRouter()
 
@@ -44,14 +45,14 @@ async def get_cart(user_id: int,
     )
 
 @router.post(
-    "/users/{user_id}/shopping-cart/add/{movie_id}",
-    response_model=CartUpdateResponseSchema,
+    "/shopping-cart/add/{movie_id}",
+    response_model=CartItemAddResponseSchema,
     status_code=200,
     description="<h3>Allows user adding movies to shopping cart."
                 "If shopping cart doesn't exist yet, creates it "
                 "automatically</h3>",
     )
-async def cart_update(user_id: int,
+async def add_movie_to_cart(user_id: int,
                       movie_id: int,
                       db: AsyncSession = Depends(get_db)):
     stmt = select(UserModel).where(UserModel.id == user_id)
@@ -85,9 +86,9 @@ async def cart_update(user_id: int,
     )
     db.add(cart_item)
     await db.commit()
-    await db.refresh()
+    await db.refresh(cart)
 
-    return CartUpdateResponseSchema(
+    return CartItemAddResponseSchema(
         id=cart.id,
         movies=[item.movie_id for item in cart.items] if cart.items else []
     )
