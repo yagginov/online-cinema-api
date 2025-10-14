@@ -5,4 +5,3 @@ class OrderStatus(StrEnum):
     PENDING = "pending"
     PAID = "paid"
     CANCELED = "canceled"
-    PROCESS = "process"
