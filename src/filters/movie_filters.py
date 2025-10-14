@@ -29,7 +29,7 @@ class MovieFilterParams(BasePaginationParams, BaseSortParams):
                     "genre_ids": "1,2,5",
                     "certification_id": 3,
                     "sort_by": "imdb",
-                    "sort_order": "desc"
+                    "sort_order": "desc",
                 }
             ]
         }
