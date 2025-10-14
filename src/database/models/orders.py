@@ -8,6 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models import Base
 from enums.order_enums import OrderStatus
 
+from .accounts import User
+
 
 class OrderModel(Base):
     __tablename__ = "orders"
@@ -22,7 +24,7 @@ class OrderModel(Base):
     items: Mapped[list["OrderItemModel"]] = relationship(
         "OrderItemModel", back_populates="order", cascade="all, delete-orphan"
     )
-    user = relationship("User", back_populates="orders")
+    user: Mapped["User"] = relationship("User", backref="orders")
     __table_args__ = (
         Index("ix_orders_user_created", "user_id", "created_at"),
         Index("ix_orders_status", "status"),
@@ -40,7 +42,7 @@ class OrderItemModel(Base):
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id", ondelete="RESTRICT"), index=True, nullable=False)
     price_at_order: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
     order: Mapped[OrderModel] = relationship("OrderModel", back_populates="items")
-    movie = relationship("MovieModel")
+    movie = relationship("MovieModel", backref="order_items")
 
     __table_args__ = (UniqueConstraint("order_id", "movie_id", name="uniq_order_item"),)
 
