@@ -11,7 +11,7 @@ from fastapi import (
 )
 from pydantic import AnyUrl
 
-from filters.movie_filters import MovieSearchParams
+from filters.movie_filters import MovieSearchParams, MovieFilterParams
 from repositories.movies import MovieRepository, get_movie_repository
 from schemas.errors import NotFoundErrorResponse
 from schemas.movies import (
@@ -21,6 +21,7 @@ from schemas.movies import (
     MoviePaginatedResponseSchema,
     MovieUpdateRequestSchema,
 )
+from services.movie_filter_service import build_paginated_response
 
 router = APIRouter()
 
@@ -44,34 +45,22 @@ router = APIRouter()
 )
 async def get_movies(
     request: Request,
+    filters: Annotated[MovieFilterParams, Depends()],
     movie_repo: Annotated[MovieRepository, Depends(get_movie_repository)],
-    page: Annotated[int, Query(ge=1)] = 1,
-    size: Annotated[int, Query(ge=1, le=50)] = 20,
-    # TODO make filtering
 ) -> MoviePaginatedResponseSchema:
-    movies = await movie_repo.get_objects_or_404(
-        offset=(page - 1) * size,
-        limit=size,
-        ordering=["-id"],
-        # TODO make filtering
+    filters.validate_ranges()
+
+    movies, total = await movie_repo.filter_movies(
+        filters=filters,
+        load_relationships=True
     )
 
-    total = await movie_repo.get_total(
-        # TODO make filtering
-    )
-    total_pages = math.ceil(total / size)
-
-    next_page = AnyUrl(str(request.url.replace_query_params(page=page + 1, size=size))) if page < total_pages else None
-    prev_page = AnyUrl(str(request.url.replace_query_params(page=page - 1, size=size))) if page > 1 else None
-
-    return MoviePaginatedResponseSchema(
-        items=[MovieListItemSchema.model_validate(movie) for movie in movies],
-        page=page,
-        size=size,
-        total_items=total,
-        total_pages=total_pages,
-        prev_page=prev_page,
-        next_page=next_page,
+    return build_paginated_response(
+        movies=movies,
+        total=total,
+        page=filters.page,
+        per_page=filters.per_page,
+        request=request,
     )
 
 
@@ -134,25 +123,13 @@ async def search_movies(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No movies found matching the search criteria.",
         )
-    total_pages = math.ceil(total / search_params.per_page)
 
-    next_page = (
-        AnyUrl(str(request.url.replace_query_params(page=search_params.page + 1)))
-        if search_params.page < total_pages
-        else None
-    )
-    prev_page = (
-        AnyUrl(str(request.url.replace_query_params(page=search_params.page - 1))) if search_params.page > 1 else None
-    )
-
-    return MoviePaginatedResponseSchema(
-        items=[MovieListItemSchema.model_validate(movie) for movie in movies],
+    return build_paginated_response(
+        movies=movies,
+        total=total,
         page=search_params.page,
-        size=search_params.per_page,
-        total_items=total,
-        total_pages=total_pages,
-        prev_page=prev_page,
-        next_page=next_page,
+        per_page=search_params.per_page,
+        request=request,
     )
 
 
