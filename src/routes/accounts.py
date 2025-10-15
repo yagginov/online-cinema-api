@@ -3,7 +3,7 @@ from typing import cast
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -157,11 +157,11 @@ async def register_user(
     },
 )
 async def activate_account(
-        request: Request,
-        background_tasks: BackgroundTasks,
-        token: str,
-        db: AsyncSession = Depends(get_db),
-        email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
+    request: Request,
+    background_tasks: BackgroundTasks,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
 ) -> MessageResponseSchema:
     """
     Activate user account via GET request.
@@ -170,10 +170,7 @@ async def activate_account(
     stmt = (
         select(ActivationToken)
         .options(joinedload(ActivationToken.user))
-        .where(
-            ActivationToken.token == token,
-            ActivationToken.expires_at > func.now()
-        )
+        .where(ActivationToken.token == token, ActivationToken.expires_at > func.now())
     )
     result = await db.execute(stmt)
     token_record = result.scalars().first()
@@ -186,24 +183,15 @@ async def activate_account(
         if expired_token:
             await db.delete(expired_token)
             await db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Activation token has expired."
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Activation token has expired.")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid activation token."
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid activation token.")
 
     user = token_record.user
     if user.is_active:
         await db.delete(token_record)
         await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User account is already active."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User account is already active.")
 
     user.is_active = True
     await db.delete(token_record)
