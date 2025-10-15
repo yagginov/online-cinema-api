@@ -1,34 +1,27 @@
-from unittest.mock import AsyncMock, patch
-
-import pytest
 import asyncio
 from datetime import datetime, timezone
 from typing import AsyncGenerator
-
+from unittest.mock import patch, AsyncMock
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import create_engine, func, insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
-
 from config import get_settings
 from database import (
-    UserGroup,
     get_db_contextmanager,
     reset_database,
 )
-from database.models import UserGroupEnum
 from database.models.accounts import (
     ActivationToken,
     PasswordResetToken,
     RefreshToken,
     User,
     UserGroup,
-    UserGroupEnum,
 )
 from database.models.base import Base
+from database.models import UserGroupEnum
 from database.populate import CSVDatabaseSeeder
 from main import app
 from security.interfaces import JWTAuthManagerInterface
@@ -281,7 +274,6 @@ async def seed_database(db_session):
 
     yield db_session
 
-
 @pytest_asyncio.fixture(scope="function")
 async def jwt_manager() -> JWTAuthManagerInterface:
     """
@@ -299,9 +291,8 @@ async def jwt_manager() -> JWTAuthManagerInterface:
     return JWTAuthManager(
         secret_key_access=settings.SECRET_KEY_ACCESS,
         secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=settings.JWT_SIGNING_ALGORITHM,
+        algorithm=settings.JWT_SIGNING_ALGORITHM
     )
-
 
 @pytest_asyncio.fixture(scope="function")
 async def seed_user_groups(db_session: AsyncSession):
