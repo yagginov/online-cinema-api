@@ -1,12 +1,12 @@
 from typing import List, Tuple
 
-from sqlalchemy import func, select, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import Select
 
-from database.models.movies import GenreModel, MovieModel, StarModel, DirectorModel
-from filters.movie_filters import MovieFilterParams, MovieSortByEnum, SortOrderEnum, MovieSearchParams
+from database.models.movies import DirectorModel, GenreModel, MovieModel, StarModel
+from filters.movie_filters import MovieFilterParams, MovieSearchParams, MovieSortByEnum, SortOrderEnum
 
 
 class MovieFilterService:
@@ -114,28 +114,20 @@ class MovieSearchService:
     def apply_search_filters(stmt, search_params: MovieSearchParams):
 
         if search_params.title:
-            stmt = stmt.where(
-                MovieModel.name.ilike(f"%{search_params.title}%")
-            )
+            stmt = stmt.where(MovieModel.name.ilike(f"%{search_params.title}%"))
 
         if search_params.description:
-            stmt = stmt.where(
-                MovieModel.description.ilike(f"%{search_params.description}%")
-            )
+            stmt = stmt.where(MovieModel.description.ilike(f"%{search_params.description}%"))
 
         star_names = search_params.get_star_names_list()
         if star_names:
-            star_conditions = [
-                MovieModel.stars.any(StarModel.name.ilike(f"%{name}%"))
-                for name in star_names
-            ]
+            star_conditions = [MovieModel.stars.any(StarModel.name.ilike(f"%{name}%")) for name in star_names]
             stmt = stmt.where(or_(*star_conditions))
 
         director_names = search_params.get_director_names_list()
         if director_names:
             director_conditions = [
-                MovieModel.directors.any(DirectorModel.name.ilike(f"%{name}%"))
-                for name in director_names
+                MovieModel.directors.any(DirectorModel.name.ilike(f"%{name}%")) for name in director_names
             ]
             stmt = stmt.where(or_(*director_conditions))
 

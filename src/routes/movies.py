@@ -86,8 +86,10 @@ async def get_movies(
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "At least one search parameter must be provided (title, "
-                                  "description, star_names, or director_names)"
+                        "detail": (
+                            "At least one search parameter must be provided (title, "
+                            "description, star_names, or director_names)"
+                        )
                     }
                 },
             },
@@ -101,23 +103,25 @@ async def get_movies(
                 },
             },
         },
-    }
+    },
 )
 async def search_movies(
     request: Request,
     search_params: Annotated[MovieSearchParams, Depends()],
     movie_repo: Annotated[MovieRepository, Depends(get_movie_repository)],
 ) -> MoviePaginatedResponseSchema:
-    if not any([
-        search_params.title,
-        search_params.description,
-        search_params.star_names,
-        search_params.director_names,
-    ]):
+    if not any(
+        [
+            search_params.title,
+            search_params.description,
+            search_params.star_names,
+            search_params.director_names,
+        ]
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one search parameter must be provided "
-                   "(title, description, star_names, or director_names)",
+            "(title, description, star_names, or director_names)",
         )
 
     movies, total = await movie_repo.search_movies(
@@ -138,9 +142,7 @@ async def search_movies(
         else None
     )
     prev_page = (
-        AnyUrl(str(request.url.replace_query_params(page=search_params.page - 1)))
-        if search_params.page > 1
-        else None
+        AnyUrl(str(request.url.replace_query_params(page=search_params.page - 1))) if search_params.page > 1 else None
     )
 
     return MoviePaginatedResponseSchema(
