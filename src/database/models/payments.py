@@ -24,6 +24,7 @@ class PaymentModel(Base):
     )
     amount: Mapped[Decimal] = mapped_column(DECIMAL(10, 2), nullable=False)
     external_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    external_payment_intent_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
     items: Mapped[list["PaymentItemModel"]] = relationship(
         "PaymentItemModel", back_populates="payment", cascade="all, delete-orphan"
@@ -34,6 +35,7 @@ class PaymentModel(Base):
     __table_args__ = (
         Index("ix_payments_status", "status"),
         Index("ix_payments_ext_id", "external_payment_id"),
+        Index("ix_payments_pi_id", "external_payment_intent_id"),
     )
 
     def __repr__(self) -> str:
