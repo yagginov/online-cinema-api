@@ -16,7 +16,6 @@ from main import app
 from repositories.orders import OrderRepository
 from security.token_manager import JWTAuthManager
 
-
 URL_PREFIX = "/api/v1"
 
 

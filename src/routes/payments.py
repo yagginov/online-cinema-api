@@ -19,7 +19,6 @@ from schemas.payments import PaymentCreateRequestSchema, PaymentCreateResponseSc
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
 
-
 router = APIRouter()
 
 
@@ -113,8 +112,7 @@ async def create_payment(
                     "quantity": 1,
                 }
             ],
-            success_url=getattr(settings, "PAYMENT_SUCCESS_URL", "http://localhost:8000/")
-            or "http://localhost:8000/",
+            success_url=getattr(settings, "PAYMENT_SUCCESS_URL", "http://localhost:8000/") or "http://localhost:8000/",
             cancel_url=getattr(settings, "PAYMENT_CANCEL_URL", "http://localhost:8000/") or "http://localhost:8000/",
             client_reference_id=str(user_id),
             metadata={
