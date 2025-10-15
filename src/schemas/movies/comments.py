@@ -2,8 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from database.models.comments import CommentModel
-
 
 class CommentCreateRequestSchema(BaseModel):
     user_id: int
