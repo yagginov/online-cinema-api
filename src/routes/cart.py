@@ -17,6 +17,7 @@ from schemas.carts import (
 
 router = APIRouter()
 
+
 @router.get(
     "/users/{user_id}/shopping-cart/",
     response_model=CartResponseSchema,
@@ -27,8 +28,7 @@ router = APIRouter()
         "endpoint</h3>"
     ),
 )
-async def get_cart(user_id: int,
-                   db: AsyncSession = Depends(get_db)):
+async def get_cart(user_id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.id == user_id)
     result = await db.execute(stmt)
     user = result.scalars().first()
@@ -37,9 +37,7 @@ async def get_cart(user_id: int,
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Please register or log in to add movies to access your cart.",
         )
-    cart_stmt = select(CartModel).options(
-        selectinload(CartModel.items)
-    ).where(CartModel.user_id == user_id)
+    cart_stmt = select(CartModel).options(selectinload(CartModel.items)).where(CartModel.user_id == user_id)
 
     result = await db.execute(cart_stmt)
     cart = result.scalars().first()
@@ -52,41 +50,40 @@ async def get_cart(user_id: int,
         items_list = []
     else:
         movie_ids = [item.movie_id for item in cart.items]
-        movies_stmt = select(MovieModel).where(
-            MovieModel.id.in_(movie_ids)).options(
-            selectinload(MovieModel.genres))
+        movies_stmt = select(MovieModel).where(MovieModel.id.in_(movie_ids)).options(selectinload(MovieModel.genres))
         result = await db.execute(movies_stmt)
         movies = result.scalars().all()
-
 
         items_list = []
         for movie in movies:
             items_list.append(
-                CartListItemSchema.model_validate({
-                    "id": movie.id,
-                    "name": movie.name,
-                    "price": movie.price,
-                    "genres": ", ".join(g.name for g in movie.genres),
-                    "year": movie.year
-                })
+                CartListItemSchema.model_validate(
+                    {
+                        "id": movie.id,
+                        "name": movie.name,
+                        "price": movie.price,
+                        "genres": ", ".join(g.name for g in movie.genres),
+                        "year": movie.year,
+                    }
+                )
             )
 
-    return CartResponseSchema(
-        id=cart.id,
-        movies=items_list
-    )
+    return CartResponseSchema(id=cart.id, movies=items_list)
+
 
 @router.post(
     "/users/{user_id}/shopping-cart/add/{movie_id}/",
     response_model=CartResponseSchema,
     status_code=200,
     description="<h3>Allows user adding movies to shopping cart."
-                "If shopping cart doesn't exist yet, creates it "
-                "automatically</h3>",
-    )
-async def add_movie_to_cart(movie_id: int,
-                            user_id: int,
-                            db: AsyncSession = Depends(get_db),):
+    "If shopping cart doesn't exist yet, creates it "
+    "automatically</h3>",
+)
+async def add_movie_to_cart(
+    movie_id: int,
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+):
 
     stmt = select(User).where(User.id == user_id)
 
@@ -111,19 +108,13 @@ async def add_movie_to_cart(movie_id: int,
 
     movie = await db.get(MovieModel, movie_id)
     if not movie:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Movie with id {movie_id} doesn't exist"
-        )
+        raise HTTPException(status_code=404, detail=f"Movie with id {movie_id} doesn't exist")
 
-    item_stmt = select(CartItemModel).where(
-            CartItemModel.cart_id == cart.id,
-            CartItemModel.movie_id == movie_id)
+    item_stmt = select(CartItemModel).where(CartItemModel.cart_id == cart.id, CartItemModel.movie_id == movie_id)
     result = await db.execute(item_stmt)
     existing_item = result.scalars().first()
     if existing_item:
-        raise HTTPException(status_code=400, detail="This movie is already "
-                                                    "in your cart.")
+        raise HTTPException(status_code=400, detail="This movie is already " "in your cart.")
     cart_item = CartItemModel(
         cart_id=cart.id,
         movie_id=movie_id,
@@ -145,21 +136,13 @@ async def add_movie_to_cart(movie_id: int,
     purchased_movie = result.scalars().all()
 
     if purchased_movie:
-        raise HTTPException(
-            status_code=400,
-            detail="You have already purchased this movie."
-        )
+        raise HTTPException(status_code=400, detail="You have already purchased this movie.")
 
-    item_stmt = select(CartItemModel.movie_id).where(
-        CartItemModel.cart_id == cart.id)
+    item_stmt = select(CartItemModel.movie_id).where(CartItemModel.cart_id == cart.id)
     result = await db.execute(item_stmt)
     movie_ids = result.scalars().all()
 
-    movies_stmt = select(MovieModel).where(
-        MovieModel.id.in_(movie_ids)
-    ).options(
-        selectinload(MovieModel.genres)
-    )
+    movies_stmt = select(MovieModel).where(MovieModel.id.in_(movie_ids)).options(selectinload(MovieModel.genres))
     result = await db.execute(movies_stmt)
     movies = result.scalars().all()
 
@@ -171,26 +154,20 @@ async def add_movie_to_cart(movie_id: int,
                 name=movie.name,
                 price=movie.price,
                 genres=", ".join(g.name for g in movie.genres),
-                year=movie.year
-            ))
+                year=movie.year,
+            )
+        )
 
-    return CartResponseSchema(
-        id=cart.id,
-        movies=items_list
-    )
+    return CartResponseSchema(id=cart.id, movies=items_list)
 
 
 @router.delete(
     "/users/{user_id}/shopping-cart/remove/{movie_id}/",
     response_model=CartResponseSchema,
     status_code=200,
-    description="<h3>Allows user removing movies from shopping cart "
-                "by "
-                "deleting CartItem object.</h3>",
-    )
-async def remove_movie_from_cart(user_id: int,
-                                 movie_id: int,
-                                 db: AsyncSession = Depends(get_db)):
+    description="<h3>Allows user removing movies from shopping cart " "by " "deleting CartItem object.</h3>",
+)
+async def remove_movie_from_cart(user_id: int, movie_id: int, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.id == user_id)
 
     result = await db.execute(stmt)
@@ -210,9 +187,7 @@ async def remove_movie_from_cart(user_id: int,
     if not cart:
         raise HTTPException(status_code=400, detail="Cart not found")
 
-    item_stmt = select(CartItemModel).where(
-        CartItemModel.cart_id == cart.id,
-        CartItemModel.movie_id == movie_id)
+    item_stmt = select(CartItemModel).where(CartItemModel.cart_id == cart.id, CartItemModel.movie_id == movie_id)
 
     result = await db.execute(item_stmt)
     existing_item = result.scalars().first()
@@ -223,16 +198,11 @@ async def remove_movie_from_cart(user_id: int,
     await db.commit()
     await db.refresh(cart)
 
-    item_stmt = select(CartItemModel.movie_id).where(
-        CartItemModel.cart_id == cart.id)
+    item_stmt = select(CartItemModel.movie_id).where(CartItemModel.cart_id == cart.id)
     result = await db.execute(item_stmt)
     movie_ids = result.scalars().all()
 
-    movies_stmt = select(MovieModel).where(
-        MovieModel.id.in_(movie_ids)
-    ).options(
-        selectinload(MovieModel.genres)
-    )
+    movies_stmt = select(MovieModel).where(MovieModel.id.in_(movie_ids)).options(selectinload(MovieModel.genres))
     result = await db.execute(movies_stmt)
     movies = result.scalars().all()
 
@@ -244,13 +214,11 @@ async def remove_movie_from_cart(user_id: int,
                 name=movie.name,
                 price=movie.price,
                 genres=", ".join(g.name for g in movie.genres),
-                year=movie.year
-))
+                year=movie.year,
+            )
+        )
 
-    return CartResponseSchema(
-        id=cart.id,
-        movies=items_list
-    )
+    return CartResponseSchema(id=cart.id, movies=items_list)
 
 
 @router.delete(
@@ -258,9 +226,8 @@ async def remove_movie_from_cart(user_id: int,
     response_model=CartDeleteResponseSchema,
     status_code=200,
     description="<h3>Allows user to clear their cart</h3>",
-    )
-async def clear_shopping_cart(user_id: int,
-                                  db: AsyncSession = Depends(get_db)):
+)
+async def clear_shopping_cart(user_id: int, db: AsyncSession = Depends(get_db)):
 
     stmt = select(User).where(User.id == user_id)
 

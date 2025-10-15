@@ -12,5 +12,6 @@ API_VERSION_PREFIX = "/api/v1"
 async def get_index():
     return {"message": "Hello World"}
 
+
 app.include_router(cart_router, prefix=f"{api_version_prefix}", tags=[""])
 app.include_router(movie_router, prefix=f"{API_VERSION_PREFIX}/cinema", tags=["cinema"])

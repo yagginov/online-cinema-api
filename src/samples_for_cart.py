@@ -6,13 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from database.models.accounts import User, UserGroup, UserGroupEnum
-from database.models.movies import (
-    MovieModel,
-    GenreModel,
-    StarModel,
-    DirectorModel,
-    CertificationModel
-)
+from database.models.movies import MovieModel, GenreModel, StarModel, DirectorModel, CertificationModel
 from database.models.cart import CartModel, CartItemModel
 
 DATABASE_URL = "postgresql+asyncpg://admin:secret@127.0.0.1:5432/cinema"
