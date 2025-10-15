@@ -14,6 +14,7 @@ from .cart import (
     CartItemModel,
     CartModel,
 )
+from .favorites import FavoriteModel
 from .movies import (
     GUID,
     CertificationModel,
@@ -33,4 +34,3 @@ from .payments import (
     PaymentItemModel,
     PaymentModel,
 )
-from .favorites import FavoriteModel

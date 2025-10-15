@@ -1,13 +1,14 @@
 from typing import Annotated, Sequence
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from database import get_db
 from database.models import MovieModel
 from database.models.favorites import FavoriteModel
+
 from ..generic import AsyncRepository
 
 
@@ -16,20 +17,14 @@ class FavoriteRepository(AsyncRepository[FavoriteModel]):
     async def add_to_favorites(self, user_id: int, movie_id: int) -> FavoriteModel:
 
         if await self.is_exist(user_id=user_id, movie_id=movie_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You cannot add the same movie twice"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot add the same movie twice")
 
         movie_stmt = select(MovieModel).where(MovieModel.id == movie_id)
         movie_result = await self.session.execute(movie_stmt)
         movie = movie_result.scalars().first()
 
         if not movie:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="The film must exist"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The film must exist")
 
         return await self.create_object({"user_id": user_id, "movie_id": movie_id})
 
@@ -38,8 +33,7 @@ class FavoriteRepository(AsyncRepository[FavoriteModel]):
 
         if not favorite:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Movie with id {movie_id} is not in your favorites"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Movie with id {movie_id} is not in your favorites"
             )
 
         return await self.delete_object(user_id=user_id, movie_id=movie_id)
@@ -75,6 +69,6 @@ class FavoriteRepository(AsyncRepository[FavoriteModel]):
 
 
 async def get_favorite_repository(
-        db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> FavoriteRepository:
     return FavoriteRepository(FavoriteModel, db)
