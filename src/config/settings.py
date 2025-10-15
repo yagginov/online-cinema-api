@@ -99,10 +99,6 @@ class TestingSettings(BaseAppSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
-    # Stripe (for tests)
-    STRIPE_SECRET_KEY: str = "test_stripe_key"
-    STRIPE_PUBLISHABLE_KEY: str = "test_stripe_pub_key"
-    STRIPE_WEBHOOK_SECRET: str = "test_stripe_webhook"
 
     @property
     def REDIS_URL(self) -> str:
