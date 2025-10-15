@@ -161,16 +161,13 @@ class MovieRepository(AsyncRepository[MovieModel]):
         return result.scalars().all()
 
     async def search_movies(
-            self,
-            search_params: MovieSearchParams,
-            load_relationships: bool = True
+        self, search_params: MovieSearchParams, load_relationships: bool = True
     ) -> tuple[list[MovieModel], int]:
 
         return await MovieSearchService.search_movies(
-            db=self.session,
-            search_params=search_params,
-            load_relationships=load_relationships
+            db=self.session, search_params=search_params, load_relationships=load_relationships
         )
+
 
 async def get_movie_repository(
     db: Annotated[AsyncSession, Depends(get_db)],

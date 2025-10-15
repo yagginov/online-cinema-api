@@ -172,9 +172,7 @@ async def test_search_movies_or_logic_multiple_directors(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_search_movies_combined_title_and_description(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&description=story"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&description=story")
 
     assert response.status_code in [200, 404]
 
@@ -196,18 +194,14 @@ async def test_search_movies_combined_title_and_star(client, seed_database):
     if movie.get("stars"):
         star_name = movie["stars"][0]
 
-        response = await client.get(
-            f"{URL_PREFIX}/movies/search/?title=a&star_names={star_name}"
-        )
+        response = await client.get(f"{URL_PREFIX}/movies/search/?title=a&star_names={star_name}")
 
         assert response.status_code in [200, 404]
 
 
 @pytest.mark.asyncio
 async def test_search_movies_with_pagination(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=a&page=1&per_page=5"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=a&page=1&per_page=5")
 
     if response.status_code == 200:
         data = response.json()
@@ -248,9 +242,7 @@ async def test_search_movies_pagination_second_page(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_search_movies_with_sorting_by_year_desc(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&sort_by=year&sort_order=desc&per_page=10"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&sort_by=year&sort_order=desc&per_page=10")
 
     if response.status_code == 200:
         data = response.json()
@@ -261,9 +253,7 @@ async def test_search_movies_with_sorting_by_year_desc(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_search_movies_with_sorting_by_year_asc(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&sort_by=year&sort_order=asc&per_page=10"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&sort_by=year&sort_order=asc&per_page=10")
 
     if response.status_code == 200:
         data = response.json()
@@ -274,9 +264,7 @@ async def test_search_movies_with_sorting_by_year_asc(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_search_movies_with_sorting_by_imdb(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=a&sort_by=imdb&sort_order=desc&per_page=10"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=a&sort_by=imdb&sort_order=desc&per_page=10")
 
     if response.status_code == 200:
         data = response.json()
@@ -287,9 +275,7 @@ async def test_search_movies_with_sorting_by_imdb(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_search_movies_with_sorting_by_name(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&sort_by=name&sort_order=asc&per_page=10"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&sort_by=name&sort_order=asc&per_page=10")
 
     if response.status_code == 200:
         data = response.json()
@@ -316,9 +302,7 @@ async def test_search_movies_only_pagination_params_returns_400(client, seed_dat
 
 @pytest.mark.asyncio
 async def test_search_movies_nonexistent_returns_404(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=xyznonexistentmovie12345678"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=xyznonexistentmovie12345678")
     assert response.status_code == 404
 
     data = response.json()
@@ -363,25 +347,19 @@ async def test_search_movies_response_structure(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_search_movies_invalid_per_page(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&per_page=100"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&per_page=100")
     assert response.status_code == 422  # Validation error
 
 
 @pytest.mark.asyncio
 async def test_search_movies_invalid_page_zero(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&page=0"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&page=0")
     assert response.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_search_movies_total_items_matches_count(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/search/?title=the&per_page=5"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/search/?title=the&per_page=5")
 
     if response.status_code == 200:
         data = response.json()
