@@ -83,6 +83,31 @@ class Settings(BaseAppSettings):
 
 class TestingSettings(BaseAppSettings):
 
+    # Postgres (for tests)
+    POSTGRES_USER: str = "test_user"
+    POSTGRES_PASSWORD: str = "test_password"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_DB_PORT: int = 5432
+    POSTGRES_DB: str = "test_db"
+
+    # Redis (for tests)
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+
+    # Celery (for tests)
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+
+    # Stripe (for tests)
+    STRIPE_SECRET_KEY: str = "test_stripe_key"
+    STRIPE_PUBLISHABLE_KEY: str = "test_stripe_pub_key"
+    STRIPE_WEBHOOK_SECRET: str = "test_stripe_webhook"
+
+    @property
+    def REDIS_URL(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
         object.__setattr__(self, "PATH_TO_DB", ":memory:")
 
