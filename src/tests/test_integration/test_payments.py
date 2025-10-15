@@ -448,7 +448,16 @@ async def test_webhook_sends_receipt_email(client, db_session, seed_database, mo
     payment_id = r.json()["id"]
 
     def completed(payload, sig_header, secret):  # noqa: ARG001
-        return {"type": "checkout.session.completed", "data": {"object": {"id": session["id"], "metadata": {"payment_id": str(payment_id)}}}}
+        return {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": session["id"],
+                    "payment_intent": "pi_email_1",
+                    "metadata": {"payment_id": str(payment_id)},
+                }
+            },
+        }
 
     monkeypatch.setattr(stripe.Webhook, "construct_event", staticmethod(completed))
     _ = await client.post(f"{URL_PREFIX}/payments/webhook/", content=b"{}", headers={"stripe-signature": "t=1,v1=x"})
@@ -457,3 +466,52 @@ async def test_webhook_sends_receipt_email(client, db_session, seed_database, mo
     call = sender.calls[0]
     assert call["email"] == user.email
     assert call["payment_id"] == payment_id
+
+
+@pytest.mark.asyncio
+async def test_refund_webhook_marks_payment_refunded(client, db_session, seed_database, monkeypatch):
+    settings = _override_settings()
+    import stripe
+
+    user = await _create_user(db_session)
+    order = await _create_order_for_user(db_session, user.id)
+
+    session = {"id": "cs_refund_1", "url": "https://stripe.test/checkout/cs_refund_1"}
+    monkeypatch.setattr(stripe.checkout.Session, "create", lambda **kwargs: session)
+
+    r = await client.post(f"{URL_PREFIX}/payments/", json={"order_id": order.id}, headers=_auth_header(settings, user.id))
+    assert r.status_code == 201
+    payment_id = r.json()["id"]
+
+    def completed(payload, sig_header, secret):  # noqa: ARG001
+        return {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": session["id"],
+                    "payment_intent": "pi_refund_1",
+                    "metadata": {"payment_id": str(payment_id)},
+                }
+            },
+        }
+
+    monkeypatch.setattr(stripe.Webhook, "construct_event", staticmethod(completed))
+    _ = await client.post(f"{URL_PREFIX}/payments/webhook/", content=b"{}", headers={"stripe-signature": "t=1,v1=x"})
+
+    def charge_refunded(payload, sig_header, secret):  # noqa: ARG001
+        return {
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "object": "charge",
+                    "id": "ch_123",
+                    "payment_intent": "pi_refund_1",
+                }
+            },
+        }
+
+    monkeypatch.setattr(stripe.Webhook, "construct_event", staticmethod(charge_refunded))
+    _ = await client.post(f"{URL_PREFIX}/payments/webhook/", content=b"{}", headers={"stripe-signature": "t=1,v1=x"})
+
+    row = (await db_session.execute(PaymentModel.__table__.select())).fetchone()
+    assert row.status == PaymentStatus.REFUNDED
