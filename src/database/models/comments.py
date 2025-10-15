@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -63,6 +63,12 @@ class CommentModel(BaseInteraction):
         back_populates="parent",
     )
     parent = relationship("CommentModel", remote_side="CommentModel.id", back_populates="replies")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=datetime.now(UTC),
+        server_default=func.now()
+    )
 
     def __repr__(self) -> str:
         return f"<Comment user_id={self.user_id}, movie_id={self.movie_id}, text={self.text[:30]}>"
