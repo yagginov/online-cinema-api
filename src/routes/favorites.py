@@ -1,7 +1,7 @@
 import math
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from pydantic import AnyUrl
 
 from config.dependencies import get_jwt_auth_manager
@@ -10,6 +10,7 @@ from repositories.favorites.favorites import (
     FavoriteRepository,
     get_favorite_repository
 )
+from database.models.accounts import User
 from schemas.favorites import (
     FavoriteAddResponseSchema,
     FavoriteDeleteResponseSchema,
@@ -17,6 +18,7 @@ from schemas.favorites import (
     FavoritesPaginatedResponseSchema,
 )
 from schemas.movies import MovieListItemSchema
+from security.permissions import get_current_user
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
 from database.models.accounts import User
