@@ -1,13 +1,14 @@
 import datetime
 
 from sqlalchemy import (
+    DateTime,
     ForeignKey,
+    UniqueConstraint,
     func,
-    DateTime, UniqueConstraint,
 )
-from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import Base
+from database.models.base import Base
 
 
 class CartModel(Base):
@@ -18,9 +19,9 @@ class CartModel(Base):
         ForeignKey("users.id",
         ondelete="CASCADE"), nullable=False, unique=True
     )
-    user = relationship("UserModel", back_populates="cart")
-    items: Mapped[list["CartItem"]] = relationship(
-        "CartItem",
+    user = relationship("User")
+    items: Mapped[list["CartItemModel"]] = relationship(
+        "CartItemModel",
         back_populates="cart",
         cascade="all, delete-orphan",
     )

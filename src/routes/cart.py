@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from database.models.cart import CartModel, CartItemModel
-from src.database import get_db
-
-from schemas.carts import CartResponseSchema, CartUpdateResponseSchema, \
-    CartItemAddResponseSchema
+from database import User, get_db
+from database.models import MovieModel
+from database.models.cart import CartItemModel, CartModel
+from schemas.carts import (
+    CartDeleteResponseSchema,
+    CartListItemSchema,
+    CartResponseSchema,
+)
 
 router = APIRouter()
 
@@ -22,7 +26,7 @@ router = APIRouter()
 )
 async def get_cart(user_id: int,
                    db: AsyncSession = Depends(get_db)):
-    stmt = select(UserModel).where(UserModel.id == user_id)
+    stmt = select(User).where(User.id == user_id)
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user:
@@ -30,47 +34,83 @@ async def get_cart(user_id: int,
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Please register or log in to add movies to access your cart.",
         )
-    cart_stmt = select(CartModel).where(CartModel.user_id == user_id)
+    cart_stmt = select(CartModel).options(
+        selectinload(CartModel.items)
+    ).where(CartModel.user_id == user_id)
+
     result = await db.execute(cart_stmt)
     cart = result.scalars().first()
+
     if not cart:
         cart = CartModel(user_id=user_id)
         db.add(cart)
         await db.commit()
         await db.refresh(cart)
+        items_list = []
+    else:
+        movie_ids = [item.movie_id for item in cart.items]
+        movies_stmt = select(MovieModel).where(
+            MovieModel.id.in_(movie_ids)).options(
+            selectinload(MovieModel.genres))
+        result = await db.execute(movies_stmt)
+        movies = result.scalars().all()
+
+        items_list = []
+        for movie in movies:
+            items_list.append(
+                CartListItemSchema.model_validate({
+                    "id": movie.id,
+                    "name": movie.name,
+                    "price": movie.price,
+                    "genres": ", ".join(g.name for g in movie.genres),
+                    "year": movie.year
+                })
+            )
 
     return CartResponseSchema(
         id=cart.id,
-        movies=[item.movie_id for item in cart.items] if cart.items else []
+        movies=items_list
     )
 
 @router.post(
-    "/shopping-cart/add/{movie_id}",
-    response_model=CartItemAddResponseSchema,
+    "/users/{user_id}/shopping-cart/add/{movie_id}/",
+    response_model=CartResponseSchema,
     status_code=200,
     description="<h3>Allows user adding movies to shopping cart."
                 "If shopping cart doesn't exist yet, creates it "
                 "automatically</h3>",
     )
-async def add_movie_to_cart(user_id: int,
-                      movie_id: int,
-                      db: AsyncSession = Depends(get_db)):
-    stmt = select(UserModel).where(UserModel.id == user_id)
+async def add_movie_to_cart(movie_id: int,
+                            user_id: int,
+                            db: AsyncSession = Depends(get_db),):
+
+    stmt = select(User).where(User.id == user_id)
+
     result = await db.execute(stmt)
     user = result.scalars().first()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Please register or log in to add movies to access your cart.",
         )
+
     cart_stmt = select(CartModel).where(CartModel.user_id == user_id)
+
     result = await db.execute(cart_stmt)
     cart = result.scalars().first()
+
     if not cart:
         cart = CartModel(user_id=user_id)
         db.add(cart)
-        await db.commit()
-        await db.refresh(cart)
+        await db.flush()
+
+    movie = await db.get(MovieModel, movie_id)
+    if not movie:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Movie with id {movie_id} doesn't exist"
+        )
 
     item_stmt = select(CartItemModel).where(
             CartItemModel.cart_id == cart.id,
@@ -88,7 +128,145 @@ async def add_movie_to_cart(user_id: int,
     await db.commit()
     await db.refresh(cart)
 
-    return CartItemAddResponseSchema(
-        id=cart.id,
-        movies=[item.movie_id for item in cart.items] if cart.items else []
+    item_stmt = select(CartItemModel.movie_id).where(
+        CartItemModel.cart_id == cart.id)
+    result = await db.execute(item_stmt)
+    movie_ids = result.scalars().all()
+
+    movies_stmt = select(MovieModel).where(
+        MovieModel.id.in_(movie_ids)
+    ).options(
+        selectinload(MovieModel.genres)
     )
+    result = await db.execute(movies_stmt)
+    movies = result.scalars().all()
+
+    items_list = []
+    for movie in movies:
+        items_list.append(
+            CartListItemSchema(
+                id=movie.id,
+                name=movie.name,
+                price=movie.price,
+                genres=", ".join(g.name for g in movie.genres),
+                year=movie.year
+            ))
+
+    return CartResponseSchema(
+        id=cart.id,
+        movies=items_list
+    )
+
+
+@router.delete(
+    "/users/{user_id}/shopping-cart/remove/{movie_id}/",
+    response_model=CartResponseSchema,
+    status_code=200,
+    description="<h3>Allows user removing movies from shopping cart "
+                "by "
+                "deleting CartItem object.</h3>",
+    )
+async def remove_movie_from_cart(user_id: int,
+                                 movie_id: int,
+                                 db: AsyncSession = Depends(get_db)):
+    stmt = select(User).where(User.id == user_id)
+
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please register or log in to add movies to access your cart.",
+        )
+
+    cart_stmt = select(CartModel).where(CartModel.user_id == user_id)
+
+    result = await db.execute(cart_stmt)
+    cart = result.scalars().first()
+
+    if not cart:
+        raise HTTPException(status_code=400, detail="Cart not found")
+
+    item_stmt = select(CartItemModel).where(
+        CartItemModel.cart_id == cart.id,
+        CartItemModel.movie_id == movie_id)
+
+    result = await db.execute(item_stmt)
+    existing_item = result.scalars().first()
+    if not existing_item:
+        raise HTTPException(status_code=400, detail="This movie wasn't in your cart")
+
+    await db.delete(existing_item)
+    await db.commit()
+    await db.refresh(cart)
+
+    item_stmt = select(CartItemModel.movie_id).where(
+        CartItemModel.cart_id == cart.id)
+    result = await db.execute(item_stmt)
+    movie_ids = result.scalars().all()
+
+    movies_stmt = select(MovieModel).where(
+        MovieModel.id.in_(movie_ids)
+    ).options(
+        selectinload(MovieModel.genres)
+    )
+    result = await db.execute(movies_stmt)
+    movies = result.scalars().all()
+
+    items_list = []
+    for movie in movies:
+        items_list.append(
+            CartListItemSchema(
+                id=movie.id,
+                name=movie.name,
+                price=movie.price,
+                genres=", ".join(g.name for g in movie.genres),
+                year=movie.year
+))
+
+    return CartResponseSchema(
+        id=cart.id,
+        movies=items_list
+    )
+
+
+@router.delete(
+    "/users/{user_id}/shopping-cart/delete/",
+    response_model=CartDeleteResponseSchema,
+    status_code=200,
+    description="<h3>Allows user to clear their cart</h3>",
+    )
+async def clear_shopping_cart(user_id: int,
+                                  db: AsyncSession = Depends(get_db)):
+
+    stmt = select(User).where(User.id == user_id)
+
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Please register or log in to add movies to access your cart.",
+        )
+
+    cart_stmt = select(CartModel).where(CartModel.user_id == user_id)
+
+    result = await db.execute(cart_stmt)
+    cart = result.scalars().first()
+
+    if not cart:
+        raise HTTPException(status_code=400, detail="Cart not found.")
+
+    movies_stmt = select(CartItemModel).where(CartItemModel.cart_id == cart.id)
+    result = await db.execute(movies_stmt)
+    cart_items = result.scalars().all()
+
+    for cart_item in cart_items:
+        await db.delete(cart_item)
+
+    await db.commit()
+    await db.refresh(cart)
+
+    return CartDeleteResponseSchema(user_id=user_id)

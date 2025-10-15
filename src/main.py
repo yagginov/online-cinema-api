@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from routes import movie_router
+from routes import cart_router, movie_router
 from routes.accounts import router as accounts_router
 from routes.profiles import router as profiles_router
 
@@ -17,3 +17,4 @@ async def get_index():
 app.include_router(movie_router, prefix=f"{api_version_prefix}/cinema", tags=["cinema"])
 app.include_router(accounts_router, prefix=f"{api_version_prefix}/accounts", tags=["accounts"])
 app.include_router(profiles_router, prefix=f"{api_version_prefix}/profiles", tags=["profiles"])
+app.include_router(cart_router, prefix=f"{api_version_prefix}", tags=[""])

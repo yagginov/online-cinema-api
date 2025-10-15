@@ -10,6 +10,10 @@ from .accounts import (
     UserProfile,
 )
 from .base import Base
+from .cart import (
+    CartItemModel,
+    CartModel,
+)
 from .movies import (
     GUID,
     CertificationModel,
