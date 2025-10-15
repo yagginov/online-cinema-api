@@ -33,3 +33,4 @@ from .payments import (
     PaymentItemModel,
     PaymentModel,
 )
+from .favorites import FavoriteModel
