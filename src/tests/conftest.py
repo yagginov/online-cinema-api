@@ -1,6 +1,6 @@
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import insert
+from sqlalchemy import insert, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_settings

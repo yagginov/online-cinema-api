@@ -1,20 +1,12 @@
 import datetime
 
 from sqlalchemy import (
-    HEAD,
     DateTime,
     ForeignKey,
     UniqueConstraint,
-    <<<<<<<,
-    =======,
-    >>>>>>>,
-    c765b12,
-    fixed,
-    formatting,
     func,
 )
 
-)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models.base import Base
@@ -46,7 +38,7 @@ class CartItemModel(Base):
         ForeignKey("movies.id", ondelete="CASCADE"),
         nullable=False,
     )
-    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    added_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="uq_cart_movie"),)
 
