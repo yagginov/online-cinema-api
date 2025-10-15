@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from database.models import MovieModel, GenreModel, CertificationModel
+from database.models import CertificationModel, GenreModel, MovieModel
 
 URL_PREFIX = "/api/v1/cinema"
 
@@ -40,9 +40,7 @@ async def test_filter_movies_by_year_range(client, db_session, seed_database):
     year_from = 2010
     year_to = 2020
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?year_from={year_from}&year_to={year_to}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?year_from={year_from}&year_to={year_to}")
     assert response.status_code == 200
 
     response_data = response.json()
@@ -56,9 +54,7 @@ async def test_filter_movies_invalid_year_range(client, seed_database):
     year_from = 2020
     year_to = 2010
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?year_from={year_from}&year_to={year_to}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?year_from={year_from}&year_to={year_to}")
     assert response.status_code == 422
     response_data = response.json()
     assert "year_from cannot be greater than year_to" in str(response_data["detail"])
@@ -96,9 +92,7 @@ async def test_filter_movies_by_imdb_range(client, db_session, seed_database):
     min_imdb = 6.0
     max_imdb = 8.5
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&max_imdb={max_imdb}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&max_imdb={max_imdb}")
     assert response.status_code == 200
 
     response_data = response.json()
@@ -112,9 +106,7 @@ async def test_filter_movies_invalid_imdb_range(client, seed_database):
     min_imdb = 8.0
     max_imdb = 6.0
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&max_imdb={max_imdb}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&max_imdb={max_imdb}")
     assert response.status_code == 422
     response_data = response.json()
     assert "min_imdb cannot be greater than max_imdb" in str(response_data["detail"])
@@ -153,9 +145,7 @@ async def test_filter_movies_by_price_range(client, db_session, seed_database):
     min_price = 5.0
     max_price = 15.0
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?min_price={min_price}&max_price={max_price}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?min_price={min_price}&max_price={max_price}")
     assert response.status_code == 200
 
     response_data = response.json()
@@ -170,9 +160,7 @@ async def test_filter_movies_invalid_price_range(client, seed_database):
     min_price = 20.0
     max_price = 10.0
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?min_price={min_price}&max_price={max_price}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?min_price={min_price}&max_price={max_price}")
     assert response.status_code == 422
     response_data = response.json()
     assert "min_price cannot be greater than max_price" in str(response_data["detail"])
@@ -195,11 +183,7 @@ async def test_filter_movies_by_single_genre(client, db_session, seed_database):
 
     movie_ids = [m["id"] for m in response_data["items"]]
     for movie_id in movie_ids:
-        stmt_check = (
-            select(MovieModel)
-            .where(MovieModel.id == movie_id)
-            .options(joinedload(MovieModel.genres))
-        )
+        stmt_check = select(MovieModel).where(MovieModel.id == movie_id).options(joinedload(MovieModel.genres))
         result_check = await db_session.execute(stmt_check)
         movie = result_check.scalars().first()
         movie_genre_ids = [g.id for g in movie.genres]
@@ -223,11 +207,7 @@ async def test_filter_movies_by_multiple_genres(client, db_session, seed_databas
 
     movie_ids = [m["id"] for m in response_data["items"]]
     for movie_id in movie_ids:
-        stmt_check = (
-            select(MovieModel)
-            .where(MovieModel.id == movie_id)
-            .options(joinedload(MovieModel.genres))
-        )
+        stmt_check = select(MovieModel).where(MovieModel.id == movie_id).options(joinedload(MovieModel.genres))
         result_check = await db_session.execute(stmt_check)
         movie = result_check.scalars().first()
         movie_genre_ids = [g.id for g in movie.genres]
@@ -243,12 +223,7 @@ async def test_filter_movies_by_invalid_genre_ids(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_filter_movies_by_certification(client, db_session, seed_database):
-    stmt = (
-        select(CertificationModel)
-        .join(MovieModel)
-        .group_by(CertificationModel.id)
-        .limit(1)
-    )
+    stmt = select(CertificationModel).join(MovieModel).group_by(CertificationModel.id).limit(1)
     result = await db_session.execute(stmt)
     certification = result.scalars().first()
 
@@ -285,9 +260,7 @@ async def test_filter_movies_by_certification(client, db_session, seed_database)
     ],
 )
 async def test_sort_movies(client, db_session, seed_database, sort_by, sort_order):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?sort_by={sort_by}&sort_order={sort_order}&per_page=20"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?sort_by={sort_by}&sort_order={sort_order}&per_page=20")
     assert response.status_code == 200
 
     response_data = response.json()
@@ -339,9 +312,7 @@ async def test_combined_filters_with_genre(client, db_session, seed_database):
     max_price = 20.0
 
     response = await client.get(
-        f"{URL_PREFIX}/movies/?"
-        f"min_imdb={min_imdb}&max_price={max_price}&"
-        f"genre_ids={genre.id}"
+        f"{URL_PREFIX}/movies/?" f"min_imdb={min_imdb}&max_price={max_price}&" f"genre_ids={genre.id}"
     )
     assert response.status_code == 200
 
@@ -351,11 +322,7 @@ async def test_combined_filters_with_genre(client, db_session, seed_database):
         assert movie["imdb"] >= min_imdb
         assert float(movie["price"]) <= max_price
 
-        stmt_check = (
-            select(MovieModel)
-            .where(MovieModel.id == movie["id"])
-            .options(joinedload(MovieModel.genres))
-        )
+        stmt_check = select(MovieModel).where(MovieModel.id == movie["id"]).options(joinedload(MovieModel.genres))
         result_check = await db_session.execute(stmt_check)
         movie_obj = result_check.scalars().first()
         movie_genre_ids = [g.id for g in movie_obj.genres]
@@ -367,15 +334,11 @@ async def test_pagination_with_filters(client, db_session, seed_database):
     min_imdb = 6.0
     per_page = 5
 
-    response_page1 = await client.get(
-        f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&page=1&per_page={per_page}"
-    )
+    response_page1 = await client.get(f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&page=1&per_page={per_page}")
     assert response_page1.status_code == 200
     data_page1 = response_page1.json()
 
-    response_page2 = await client.get(
-        f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&page=2&per_page={per_page}"
-    )
+    response_page2 = await client.get(f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&page=2&per_page={per_page}")
     assert response_page2.status_code == 200
     data_page2 = response_page2.json()
 
@@ -396,9 +359,7 @@ async def test_pagination_with_filters(client, db_session, seed_database):
 
 @pytest.mark.asyncio
 async def test_filter_with_no_results(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?year_from=2050&year_to=2100"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?year_from=2050&year_to=2100")
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data["items"]) == 0
@@ -407,9 +368,7 @@ async def test_filter_with_no_results(client, seed_database):
 
 @pytest.mark.asyncio
 async def test_filter_extreme_values(client, seed_database):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?min_imdb=9.9&max_price=0.01"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?min_imdb=9.9&max_price=0.01")
     assert response.status_code in [200, 404]
 
 
@@ -431,9 +390,7 @@ async def test_filter_validation_errors(
     invalid_value,
     expected_error,
 ):
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?{filter_param}={invalid_value}"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?{filter_param}={invalid_value}")
     assert response.status_code == 422
     response_data = response.json()
     assert "detail" in response_data
@@ -446,9 +403,7 @@ async def test_filter_results_match_database(client, db_session, seed_database):
     min_imdb = 7.0
     max_price = 15.0
 
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&max_price={max_price}&per_page=50"
-    )
+    response = await client.get(f"{URL_PREFIX}/movies/?min_imdb={min_imdb}&max_price={max_price}&per_page=50")
     assert response.status_code == 200
     api_movies = response.json()["items"]
     api_movie_ids = sorted([m["id"] for m in api_movies])

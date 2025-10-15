@@ -73,26 +73,23 @@ class MovieFilterParams(BasePaginationParams, BaseSortParams):
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="genre_ids must contain comma-separated integers"
+                detail="genre_ids must contain comma-separated integers",
             )
 
     def validate_ranges(self):
         if self.year_from and self.year_to and self.year_from > self.year_to:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="year_from cannot be greater than year_to"
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="year_from cannot be greater than year_to"
             )
 
         if self.min_imdb and self.max_imdb and self.min_imdb > self.max_imdb:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="min_imdb cannot be greater than max_imdb"
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="min_imdb cannot be greater than max_imdb"
             )
 
         if self.min_price and self.max_price and self.min_price > self.max_price:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="min_price cannot be greater than max_price"
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="min_price cannot be greater than max_price"
             )
 
 

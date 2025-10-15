@@ -1,5 +1,5 @@
-from typing import List, Tuple
 from math import ceil
+from typing import List, Tuple
 
 from fastapi import Request
 from pydantic import AnyUrl
@@ -10,7 +10,7 @@ from sqlalchemy.sql import Select
 
 from database.models.movies import DirectorModel, GenreModel, MovieModel, StarModel
 from filters.movie_filters import MovieFilterParams, MovieSearchParams, MovieSortByEnum, SortOrderEnum
-from schemas.movies.movies import MoviePaginatedResponseSchema, MovieListItemSchema
+from schemas.movies.movies import MovieListItemSchema, MoviePaginatedResponseSchema
 
 
 class MovieFilterService:
@@ -162,12 +162,13 @@ class MovieSearchService:
             load_relationships=load_relationships,
         )
 
+
 def build_paginated_response(
-        movies: List[MovieModel],
-        total: int,
-        page: int,
-        per_page: int,
-        request: Request,
+    movies: List[MovieModel],
+    total: int,
+    page: int,
+    per_page: int,
+    request: Request,
 ) -> MoviePaginatedResponseSchema:
     total_pages = ceil(total / per_page) if per_page > 0 else 1
 
