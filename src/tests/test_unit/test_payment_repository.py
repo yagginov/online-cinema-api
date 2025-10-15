@@ -55,9 +55,7 @@ async def test_get_by_external_payment_id_returns_payment_with_items(db_session,
 
     for item in order.items:
         db_session.add(
-            PaymentItemModel(
-                payment_id=payment.id, order_item_id=item.id, price_at_payment=item.price_at_order
-            )
+            PaymentItemModel(payment_id=payment.id, order_item_id=item.id, price_at_payment=item.price_at_order)
         )
     await db_session.commit()
 
@@ -103,4 +101,3 @@ async def test_get_object_returns_none_for_missing(db_session, seed_database):
     repo = PaymentRepository(PaymentModel, db_session)
     obj = await repo.get_object(id=-1)
     assert obj is None
-
