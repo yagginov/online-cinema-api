@@ -11,7 +11,7 @@ from fastapi import (
 )
 from pydantic import AnyUrl
 
-from filters.movie_filters import MovieSearchParams, MovieFilterParams
+from filters.movie_filters import MovieFilterParams, MovieSearchParams
 from repositories.movies import MovieRepository, get_movie_repository
 from schemas.errors import NotFoundErrorResponse
 from schemas.movies import (
@@ -50,10 +50,7 @@ async def get_movies(
 ) -> MoviePaginatedResponseSchema:
     filters.validate_ranges()
 
-    movies, total = await movie_repo.filter_movies(
-        filters=filters,
-        load_relationships=True
-    )
+    movies, total = await movie_repo.filter_movies(filters=filters, load_relationships=True)
 
     return build_paginated_response(
         movies=movies,
