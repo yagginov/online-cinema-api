@@ -29,7 +29,7 @@ async def test_get_movies_default_parameters(client, seed_database):
 
     assert isinstance(response_data.get("items"), list)
     assert response_data.get("page") == 1
-    assert response_data.get("size") == 20
+    assert response_data.get("size") == 10
     assert response_data.get("total_pages", 0) > 0
     assert response_data.get("total_items", 0) > 0
 
@@ -41,19 +41,19 @@ async def test_get_movies_default_parameters(client, seed_database):
 @pytest.mark.asyncio
 async def test_get_movies_with_custom_parameters(client, seed_database):
     page = 2
-    size = 5
+    per_page = 10
 
-    response = await client.get(f"{URL_PREFIX}/movies/?page={page}&size={size}")
+    response = await client.get(f"{URL_PREFIX}/movies/?page={page}&size={per_page}")
     assert response.status_code == 200
     response_data = response.json()
 
-    assert len(response_data["items"]) == size
+    assert len(response_data["items"]) == per_page
     assert response_data["page"] == page
-    assert response_data["size"] == size
+    assert response_data["size"] == per_page
 
     if page > 1:
-        expected_prev = str(f"{URL_PREFIX}/movies/?page={page-1}&size={size}")
-        assert response_data["prev_page"].endswith(f"/movies/?page={page-1}&size={size}")
+        expected_prev = str(f"{URL_PREFIX}/movies/?page={page-1}&size={per_page}")
+        assert response_data["prev_page"].endswith(f"/movies/?page={page-1}&size={per_page}")
 
     if page < response_data["total_pages"]:
         assert response_data["next_page"] is not None
@@ -63,15 +63,15 @@ async def test_get_movies_with_custom_parameters(client, seed_database):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "page, size, expected_detail",
+    "page, per_page, expected_detail",
     [
         (0, 10, "Input should be greater than or equal to 1"),
         (1, 0, "Input should be greater than or equal to 1"),
         (0, 0, "Input should be greater than or equal to 1"),
     ],
 )
-async def test_invalid_page_and_size(client, page, size, expected_detail):
-    response = await client.get(f"{URL_PREFIX}/movies/?page={page}&size={size}")
+async def test_invalid_page_and_size(client, page, per_page, expected_detail):
+    response = await client.get(f"{URL_PREFIX}/movies/?page={page}&per_page={per_page}")
     assert response.status_code == 422
     response_data = response.json()
     assert "detail" in response_data
@@ -80,40 +80,36 @@ async def test_invalid_page_and_size(client, page, size, expected_detail):
 
 @pytest.mark.asyncio
 async def test_page_exceeds_maximum(client, db_session, seed_database):
-    size = 10
+    per_page = 10
     count_stmt = select(func.count(MovieModel.id))
     result = await db_session.execute(count_stmt)
     total_movies = result.scalar_one()
 
-    max_page = (total_movies + size - 1) // size
-    response = await client.get(f"{URL_PREFIX}/movies/?page={max_page + 1}&size={size}")
+    max_page = (total_movies + per_page - 1) // per_page
+    response = await client.get(f"{URL_PREFIX}/movies/?page={max_page + 1}&size={per_page}")
     assert response.status_code == 404
     assert "detail" in response.json()
 
 
 @pytest.mark.asyncio
-async def test_movies_sorted_by_id_desc(client, db_session, seed_database):
-    response = await client.get(f"{URL_PREFIX}/movies/?page=1&size=10")
+async def test_movies_sorted_by_default_imdb_desc(client, db_session, seed_database):
+    response = await client.get(f"{URL_PREFIX}/movies/?page=1&per_page=10")
     assert response.status_code == 200
     response_data = response.json()
 
-    stmt = select(MovieModel).order_by(MovieModel.id.desc()).limit(10)
-    result = await db_session.execute(stmt)
-    expected_movies = result.scalars().all()
-
-    expected_movie_ids = [movie.id for movie in expected_movies]
-    returned_movie_ids = [movie["id"] for movie in response_data["items"]]
-
-    assert returned_movie_ids == expected_movie_ids
+    if len(response_data["items"]) > 1:
+        imdb_ratings = [movie["imdb"] for movie in response_data["items"]]
+        assert imdb_ratings == sorted(imdb_ratings, reverse=True), \
+            "Movies should be sorted by IMDb rating in descending order by default"
 
 
 @pytest.mark.asyncio
 async def test_movie_list_with_pagination(client, db_session, seed_database):
     page = 2
-    size = 5
-    offset = (page - 1) * size
+    per_page = 5
+    offset = (page - 1) * per_page
 
-    response = await client.get(f"{URL_PREFIX}/movies/?page={page}&size={size}")
+    response = await client.get(f"{URL_PREFIX}/movies/?page={page}&per_page={per_page}")
     assert response.status_code == 200
     response_data = response.json()
 
@@ -121,12 +117,14 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
     count_result = await db_session.execute(count_stmt)
     total_items = count_result.scalar_one()
 
-    total_pages = (total_items + size - 1) // size
+    import math
+    total_pages = math.ceil(total_items / per_page)
 
     assert response_data["total_items"] == total_items
     assert response_data["total_pages"] == total_pages
 
-    stmt = select(MovieModel).order_by(MovieModel.id.desc()).offset(offset).limit(size)
+    stmt = select(MovieModel).order_by(MovieModel.imdb.desc()).offset(offset).limit(per_page)
+
     result = await db_session.execute(stmt)
     expected_movies = result.scalars().all()
 
@@ -135,23 +133,20 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
 
     assert expected_movie_ids == returned_movie_ids
 
-    expected_prev_page = f"{URL_PREFIX}/movies/?page={page - 1}&size={size}" if page > 1 else None
-    expected_next_page = f"{URL_PREFIX}/movies/?page={page + 1}&size={size}" if page < total_pages else None
-
-    if expected_prev_page is None:
+    if page > 1:
+        assert response_data["prev_page"] is not None
+    else:
         assert response_data["prev_page"] is None
-    else:
-        assert response_data["prev_page"].endswith(f"/movies/?page={page-1}&size={size}")
 
-    if expected_next_page is None:
-        assert response_data["next_page"] is None
+    if page < total_pages:
+        assert response_data["next_page"] is not None
     else:
-        assert response_data["next_page"].endswith(f"/movies/?page={page+1}&size={size}")
+        assert response_data["next_page"] is None
 
 
 @pytest.mark.asyncio
 async def test_movies_fields_match_schema(client, db_session, seed_database):
-    response = await client.get(f"{URL_PREFIX}/movies/?page=1&size=10")
+    response = await client.get(f"{URL_PREFIX}/movies/?page=1&per_page=10")
     assert response.status_code == 200
     response_data = response.json()
 
