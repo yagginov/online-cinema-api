@@ -3,7 +3,7 @@ from typing import cast
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -127,7 +127,7 @@ async def register_user(
         return UserRegistrationResponseSchema.model_validate(new_user)
 
 
-@router.post(
+@router.get(
     "/activate/",
     name="activate_account",
     response_model=MessageResponseSchema,
@@ -157,54 +157,53 @@ async def register_user(
     },
 )
 async def activate_account(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    activation_data: UserActivationRequestSchema,
-    db: AsyncSession = Depends(get_db),
-    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
+        request: Request,
+        background_tasks: BackgroundTasks,
+        token: str,
+        db: AsyncSession = Depends(get_db),
+        email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
 ) -> MessageResponseSchema:
     """
-    Endpoint to activate a user's account.
-
-    This endpoint verifies the activation token for a user by checking that the token record exists
-    and that it has not expired. If the token is valid and the user's account is not already active,
-    the user's account is activated and the activation token is deleted. If the token is invalid, expired,
-    or if the account is already active, an HTTP 400 error is raised.
-
-    Args:
-        activation_data (UserActivationRequestSchema): Contains the user's email and activation token.
-        db (AsyncSession): The asynchronous database session.
-
-    Returns:
-        MessageResponseSchema: A response message confirming successful activation.
-
-    Raises:
-        HTTPException:
-            - 400 Bad Request if the activation token is invalid or expired.
-            - 400 Bad Request if the user account is already active.
+    Activate user account via GET request.
+    Token is one-time use and short-lived for security.
     """
     stmt = (
         select(ActivationToken)
         .options(joinedload(ActivationToken.user))
-        .join(User)
         .where(
-            User.email == activation_data.email,
-            ActivationToken.token == activation_data.token,
+            ActivationToken.token == token,
+            ActivationToken.expires_at > func.now()
         )
     )
     result = await db.execute(stmt)
     token_record = result.scalars().first()
 
-    now_utc = datetime.now(timezone.utc)
-    if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < now_utc:
-        if token_record:
-            await db.delete(token_record)
+    if not token_record:
+        stmt_check = select(ActivationToken).where(ActivationToken.token == token)
+        result_check = await db.execute(stmt_check)
+        expired_token = result_check.scalars().first()
+
+        if expired_token:
+            await db.delete(expired_token)
             await db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired activation token.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Activation token has expired."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid activation token."
+            )
 
     user = token_record.user
     if user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User account is already active.")
+        await db.delete(token_record)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already active."
+        )
 
     user.is_active = True
     await db.delete(token_record)
@@ -212,7 +211,11 @@ async def activate_account(
 
     login_link = str(request.url_for("login"))
 
-    background_tasks.add_task(email_sender.send_activation_complete_email, str(user.email), login_link)
+    background_tasks.add_task(
+        email_sender.send_activation_complete_email,
+        str(user.email),
+        login_link,
+    )
 
     return MessageResponseSchema(message="User account activated successfully.")
 
