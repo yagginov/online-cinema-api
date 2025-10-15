@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import func, select
 
 from config.dependencies import get_settings as dep_get_settings
+from config.dependencies import get_accounts_email_notificator
 from database.models import MovieModel
 from database.models.accounts import User, UserGroup, UserGroupEnum
 from database.models.orders import OrderModel
@@ -41,6 +42,26 @@ async def _create_order_for_user(db_session, user_id: int) -> OrderModel:
     movie_ids = [row.id for row in movies]
     repo = OrderRepository(OrderModel, db_session)
     return await repo.create_order(user_id=user_id, movie_ids=movie_ids)
+
+
+async def _get_or_create_group(db_session, group_name: UserGroupEnum) -> UserGroup:
+    result = await db_session.execute(select(UserGroup).where(UserGroup.name == group_name))
+    group = result.scalars().first()
+    if not group:
+        group = UserGroup(name=group_name)
+        db_session.add(group)
+        await db_session.flush()
+    return group
+
+
+async def _create_admin_user(db_session, email: str) -> User:
+    group = await _get_or_create_group(db_session, UserGroupEnum.ADMIN)
+    user = User.create(email=email, raw_password="StrongP@ssw0rd!", group_id=group.id)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
 
 
 def _override_settings():
@@ -320,3 +341,119 @@ async def test_create_payment_reuses_pending_session(client, db_session, seed_da
     result = await db_session.execute(select(func.count()).select_from(PaymentModel))
     count = result.scalar()
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_list_my_payments_filters(client, db_session, seed_database, monkeypatch):
+    settings = _override_settings()
+    import stripe
+
+    user = await _create_user(db_session)
+    order1 = await _create_order_for_user(db_session, user.id)
+    order2 = await _create_order_for_user(db_session, user.id)
+
+    s1 = {"id": "cs_list_1", "url": "https://stripe.test/checkout/cs_list_1"}
+    s2 = {"id": "cs_list_2", "url": "https://stripe.test/checkout/cs_list_2"}
+    sessions = [s1, s2]
+    def create_session(**kwargs):  # noqa: ARG001
+        return sessions.pop(0)
+    monkeypatch.setattr(stripe.checkout.Session, "create", create_session)
+
+    r1 = await client.post(f"{URL_PREFIX}/payments/", json={"order_id": order1.id}, headers=_auth_header(settings, user.id))
+    r2 = await client.post(f"{URL_PREFIX}/payments/", json={"order_id": order2.id}, headers=_auth_header(settings, user.id))
+    assert r1.status_code == 201 and r2.status_code == 201
+    p1_id = r1.json()["id"]
+
+    def make_completed(payload, sig_header, secret):  # noqa: ARG001
+        return {"type": "checkout.session.completed", "data": {"object": {"id": s1["id"], "metadata": {"payment_id": str(p1_id)}}}}
+
+    monkeypatch.setattr(stripe.Webhook, "construct_event", staticmethod(make_completed))
+    _ = await client.post(f"{URL_PREFIX}/payments/webhook/", content=b"{}", headers={"stripe-signature": "t=1,v1=x"})
+
+    resp = await client.get(f"{URL_PREFIX}/payments/?status=successful", headers=_auth_header(settings, user.id))
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_items"] >= 1
+    assert all(item["status"] == PaymentStatus.SUCCESSFUL for item in data["items"])
+
+
+@pytest.mark.asyncio
+async def test_admin_list_payments_requires_admin(client, db_session, seed_database):
+    settings = _override_settings()
+    user = await _create_user(db_session)
+    resp = await client.get(f"{URL_PREFIX}/admin/payments/", headers=_auth_header(settings, user.id))
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_list_payments_filters_by_user(client, db_session, seed_database, monkeypatch):
+    settings = _override_settings()
+    import stripe
+
+    admin = await _create_admin_user(db_session, email="admin@example.com")
+    user1 = await _create_user(db_session, email="u1@example.com")
+    user2 = await _create_user(db_session, email="u2@example.com")
+
+    o1 = await _create_order_for_user(db_session, user1.id)
+    o2 = await _create_order_for_user(db_session, user2.id)
+
+    s1 = {"id": "cs_admin_1", "url": "https://stripe.test/checkout/cs_admin_1"}
+    s2 = {"id": "cs_admin_2", "url": "https://stripe.test/checkout/cs_admin_2"}
+    admin_sessions = [s1, s2]
+    def create_admin_session(**kwargs):  # noqa: ARG001
+        return admin_sessions.pop(0)
+    monkeypatch.setattr(stripe.checkout.Session, "create", create_admin_session)
+
+    r1 = await client.post(f"{URL_PREFIX}/payments/", json={"order_id": o1.id}, headers=_auth_header(settings, user1.id))
+    r2 = await client.post(f"{URL_PREFIX}/payments/", json={"order_id": o2.id}, headers=_auth_header(settings, user2.id))
+    assert r1.status_code == 201 and r2.status_code == 201
+
+    resp = await client.get(
+        f"{URL_PREFIX}/admin/payments/?user_id={user1.id}", headers=_auth_header(settings, admin.id)
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert all(item["user_id"] == user1.id for item in data["items"])
+
+
+@pytest.mark.asyncio
+async def test_webhook_sends_receipt_email(client, db_session, seed_database, monkeypatch):
+    settings = _override_settings()
+    import stripe
+
+    class FakeSender:
+        def __init__(self):
+            self.calls: list[dict] = []
+
+        async def send_payment_receipt_email(self, email: str, *, payment_id: int, order_id: int, amount: str, created_at: str) -> None:  # noqa: E501
+            self.calls.append({
+                "email": email,
+                "payment_id": payment_id,
+                "order_id": order_id,
+                "amount": amount,
+                "created_at": created_at,
+            })
+
+    sender = FakeSender()
+    app.dependency_overrides[get_accounts_email_notificator] = lambda: sender
+
+    user = await _create_user(db_session)
+    order = await _create_order_for_user(db_session, user.id)
+
+    session = {"id": "cs_email_1", "url": "https://stripe.test/checkout/cs_email_1"}
+    monkeypatch.setattr(stripe.checkout.Session, "create", lambda **kwargs: session)
+
+    r = await client.post(f"{URL_PREFIX}/payments/", json={"order_id": order.id}, headers=_auth_header(settings, user.id))
+    assert r.status_code == 201
+    payment_id = r.json()["id"]
+
+    def completed(payload, sig_header, secret):  # noqa: ARG001
+        return {"type": "checkout.session.completed", "data": {"object": {"id": session["id"], "metadata": {"payment_id": str(payment_id)}}}}
+
+    monkeypatch.setattr(stripe.Webhook, "construct_event", staticmethod(completed))
+    _ = await client.post(f"{URL_PREFIX}/payments/webhook/", content=b"{}", headers={"stripe-signature": "t=1,v1=x"})
+
+    assert len(sender.calls) == 1
+    call = sender.calls[0]
+    assert call["email"] == user.email
+    assert call["payment_id"] == payment_id
