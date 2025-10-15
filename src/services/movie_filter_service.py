@@ -1,5 +1,8 @@
 from typing import List, Tuple
+from math import ceil
 
+from fastapi import Request
+from pydantic import AnyUrl
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -7,6 +10,7 @@ from sqlalchemy.sql import Select
 
 from database.models.movies import DirectorModel, GenreModel, MovieModel, StarModel
 from filters.movie_filters import MovieFilterParams, MovieSearchParams, MovieSortByEnum, SortOrderEnum
+from schemas.movies.movies import MoviePaginatedResponseSchema, MovieListItemSchema
 
 
 class MovieFilterService:
@@ -21,6 +25,11 @@ class MovieFilterService:
             stmt = stmt.where(MovieModel.imdb >= filters.min_imdb)
         if filters.max_imdb is not None:
             stmt = stmt.where(MovieModel.imdb <= filters.max_imdb)
+
+        if filters.min_price is not None:
+            stmt = stmt.where(MovieModel.price >= filters.min_price)
+        if filters.max_price is not None:
+            stmt = stmt.where(MovieModel.price <= filters.max_price)
 
         if filters.certification_id:
             stmt = stmt.where(MovieModel.certification_id == filters.certification_id)
@@ -152,3 +161,35 @@ class MovieSearchService:
             sort_order=search_params.sort_order,
             load_relationships=load_relationships,
         )
+
+def build_paginated_response(
+        movies: List[MovieModel],
+        total: int,
+        page: int,
+        per_page: int,
+        request: Request,
+) -> MoviePaginatedResponseSchema:
+
+    total_pages = ceil(total / per_page) if per_page > 0 else 1
+
+    next_page = (
+        AnyUrl(str(request.url.replace_query_params(page=page + 1)))
+        if page < total_pages
+        else None
+    )
+
+    prev_page = (
+        AnyUrl(str(request.url.replace_query_params(page=page - 1)))
+        if page > 1
+        else None
+    )
+
+    return MoviePaginatedResponseSchema(
+        items=[MovieListItemSchema.model_validate(movie) for movie in movies],
+        page=page,
+        size=per_page,
+        total_items=total,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )
