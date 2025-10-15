@@ -8,6 +8,8 @@ from sqlalchemy.orm import joinedload
 from database import get_db
 from database.models.payments import PaymentModel
 from repositories.generic import AsyncRepository
+from services.payment_filter_service import PaymentFilterService
+from filters.payment_filters import PaymentFilterParams
 
 
 class PaymentRepository(AsyncRepository[PaymentModel]):
@@ -40,6 +42,11 @@ class PaymentRepository(AsyncRepository[PaymentModel]):
         stmt = self._with_items(select(self.model).where(self.model.external_payment_id == external_payment_id))
         result = await self.session.execute(stmt)
         return result.unique().scalars().first()
+
+    async def list_payments(
+        self, params: PaymentFilterParams, *, user_id: int | None = None
+    ) -> tuple[list[PaymentModel], int]:
+        return await PaymentFilterService.list_payments(self.session, params, user_id=user_id)
 
 
 async def get_payment_repository(
