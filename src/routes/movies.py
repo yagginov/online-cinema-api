@@ -52,6 +52,12 @@ async def get_movies(
 
     movies, total = await movie_repo.filter_movies(filters=filters, load_relationships=True)
 
+    if not movies:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movies not found.",
+        )
+
     return build_paginated_response(
         movies=movies,
         total=total,
