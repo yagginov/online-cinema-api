@@ -99,8 +99,9 @@ async def test_movies_sorted_by_default_imdb_desc(client, db_session, seed_datab
 
     if len(response_data["items"]) > 1:
         imdb_ratings = [movie["imdb"] for movie in response_data["items"]]
-        assert imdb_ratings == sorted(imdb_ratings, reverse=True), \
-            "Movies should be sorted by IMDb rating in descending order by default"
+        assert imdb_ratings == sorted(
+            imdb_ratings, reverse=True
+        ), "Movies should be sorted by IMDb rating in descending order by default"
 
 
 @pytest.mark.asyncio
@@ -118,6 +119,7 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
     total_items = count_result.scalar_one()
 
     import math
+
     total_pages = math.ceil(total_items / per_page)
 
     assert response_data["total_items"] == total_items
