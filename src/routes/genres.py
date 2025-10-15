@@ -21,7 +21,7 @@ async def get_genres(
         GenreResponseSchema(
             id=genre.id,
             name=genre.name,
-            movies_url=AnyUrl(f"{str(request.url).replace("genres", "movies").rstrip("/")}/?genres_ids={genre.id}"),
+            movies_url=AnyUrl(f"{str(request.url).replace("genres", "movies").rstrip("/")}/?genre_ids={genre.id}"),
         )
         for genre in genres
     ]
