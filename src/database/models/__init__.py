@@ -21,6 +21,10 @@ from .movies import (
     StarModel,
     StarsMoviesModel,
 )
+from .cart import (
+    CartModel,
+    CartItemModel,
+)
 from .orders import (
     OrderItemModel,
     OrderModel,
