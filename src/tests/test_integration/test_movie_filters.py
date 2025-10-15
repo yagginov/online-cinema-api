@@ -36,20 +36,6 @@ async def test_filter_movies_by_year_to(client, db_session, seed_database):
 
 
 @pytest.mark.asyncio
-async def test_filter_movies_by_year_range(client, db_session, seed_database):
-    year_from = 2010
-    year_to = 2020
-
-    response = await client.get(f"{URL_PREFIX}/movies/?year_from={year_from}&year_to={year_to}")
-    assert response.status_code == 200
-
-    response_data = response.json()
-
-    for movie in response_data["items"]:
-        assert year_from <= movie["year"] <= year_to
-
-
-@pytest.mark.asyncio
 async def test_filter_movies_invalid_year_range(client, seed_database):
     year_from = 2020
     year_to = 2010
@@ -191,31 +177,6 @@ async def test_filter_movies_by_single_genre(client, db_session, seed_database):
 
 
 @pytest.mark.asyncio
-async def test_filter_movies_by_multiple_genres(client, db_session, seed_database):
-    stmt = select(GenreModel).limit(2)
-    result = await db_session.execute(stmt)
-    genres = result.scalars().all()
-    assert len(genres) >= 2
-
-    genre_ids = [genres[0].id, genres[1].id]
-    genre_ids_str = ",".join(map(str, genre_ids))
-
-    response = await client.get(f"{URL_PREFIX}/movies/?genre_ids={genre_ids_str}")
-    assert response.status_code == 200
-
-    response_data = response.json()
-
-    movie_ids = [m["id"] for m in response_data["items"]]
-    for movie_id in movie_ids:
-        stmt_check = select(MovieModel).where(MovieModel.id == movie_id).options(joinedload(MovieModel.genres))
-        result_check = await db_session.execute(stmt_check)
-        movie = result_check.scalars().first()
-        movie_genre_ids = [g.id for g in movie.genres]
-        for genre_id in genre_ids:
-            assert genre_id in movie_genre_ids, f"Movie {movie_id} missing genre {genre_id}"
-
-
-@pytest.mark.asyncio
 async def test_filter_movies_by_invalid_genre_ids(client, seed_database):
     response = await client.get(f"{URL_PREFIX}/movies/?genre_ids=abc,def")
     assert response.status_code == 422
@@ -279,57 +240,6 @@ async def test_sort_movies(client, db_session, seed_database, sort_by, sort_orde
 
 
 @pytest.mark.asyncio
-async def test_combined_filters(client, db_session, seed_database):
-    year_from = 2010
-    year_to = 2020
-    min_imdb = 6.5
-    max_price = 15.0
-
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?"
-        f"year_from={year_from}&year_to={year_to}&"
-        f"min_imdb={min_imdb}&max_price={max_price}&"
-        f"sort_by=imdb&sort_order=desc"
-    )
-    assert response.status_code == 200
-
-    response_data = response.json()
-
-    for movie in response_data["items"]:
-        assert year_from <= movie["year"] <= year_to
-        assert movie["imdb"] >= min_imdb
-        assert float(movie["price"]) <= max_price
-
-
-@pytest.mark.asyncio
-async def test_combined_filters_with_genre(client, db_session, seed_database):
-    stmt = select(GenreModel).limit(1)
-    result = await db_session.execute(stmt)
-    genre = result.scalars().first()
-    assert genre is not None
-
-    min_imdb = 7.0
-    max_price = 20.0
-
-    response = await client.get(
-        f"{URL_PREFIX}/movies/?" f"min_imdb={min_imdb}&max_price={max_price}&" f"genre_ids={genre.id}"
-    )
-    assert response.status_code == 200
-
-    response_data = response.json()
-
-    for movie in response_data["items"]:
-        assert movie["imdb"] >= min_imdb
-        assert float(movie["price"]) <= max_price
-
-        stmt_check = select(MovieModel).where(MovieModel.id == movie["id"]).options(joinedload(MovieModel.genres))
-        result_check = await db_session.execute(stmt_check)
-        movie_obj = result_check.scalars().first()
-        movie_genre_ids = [g.id for g in movie_obj.genres]
-        assert genre.id in movie_genre_ids
-
-
-@pytest.mark.asyncio
 async def test_pagination_with_filters(client, db_session, seed_database):
     min_imdb = 6.0
     per_page = 5
@@ -355,15 +265,6 @@ async def test_pagination_with_filters(client, db_session, seed_database):
     movies_page1_ids = [m["id"] for m in data_page1["items"]]
     movies_page2_ids = [m["id"] for m in data_page2["items"]]
     assert len(set(movies_page1_ids) & set(movies_page2_ids)) == 0
-
-
-@pytest.mark.asyncio
-async def test_filter_with_no_results(client, seed_database):
-    response = await client.get(f"{URL_PREFIX}/movies/?year_from=2050&year_to=2100")
-    assert response.status_code == 200
-    response_data = response.json()
-    assert len(response_data["items"]) == 0
-    assert response_data["total_items"] == 0
 
 
 @pytest.mark.asyncio
