@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
 from routes import cart_router, movie_router, order_router
-
 from routes.accounts import router as accounts_router
 from routes.profiles import router as profiles_router
 
