@@ -46,4 +46,3 @@ async def get_payment_repository(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PaymentRepository:
     return PaymentRepository(PaymentModel, db)
-
