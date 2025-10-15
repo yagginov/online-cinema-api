@@ -4,9 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from database import User
-from database.models import MovieModel
+from database.models import MovieModel, OrderItemModel, OrderModel
 from database.models.cart import CartModel, CartItemModel
 from database import get_db
+from enums.order_enums import OrderStatus
 
 from schemas.carts import (
     CartResponseSchema,
@@ -56,6 +57,7 @@ async def get_cart(user_id: int,
             selectinload(MovieModel.genres))
         result = await db.execute(movies_stmt)
         movies = result.scalars().all()
+
 
         items_list = []
         for movie in movies:
@@ -129,6 +131,24 @@ async def add_movie_to_cart(movie_id: int,
     db.add(cart_item)
     await db.commit()
     await db.refresh(cart)
+
+    purchased_movie_stmt = (
+        select(OrderItemModel)
+        .join(OrderModel)
+        .where(
+            OrderModel.user_id == user_id,
+            OrderModel.status == OrderStatus.PAID,
+            OrderItemModel.movie_id == movie_id,
+        )
+    )
+    result = await db.execute(purchased_movie_stmt)
+    purchased_movie = result.scalars().all()
+
+    if purchased_movie:
+        raise HTTPException(
+            status_code=400,
+            detail="You have already purchased this movie."
+        )
 
     item_stmt = select(CartItemModel.movie_id).where(
         CartItemModel.cart_id == cart.id)
