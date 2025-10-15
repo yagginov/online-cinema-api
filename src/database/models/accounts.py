@@ -192,3 +192,21 @@ class RefreshToken(TokenBase):
 
     def __repr__(self):
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+
+
+class BlacklistedToken(Base):
+    __tablename__ = "blacklisted_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token: Mapped[str] = mapped_column(String(512), unique=True, nullable=False, default=generate_secure_token)
+    blacklisted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    def __repr__(self):
+        return (
+            f"<BlacklistedTokenModel(id={self.id}, "
+            f"blacklisted_at={self.blacklisted_at}, "
+            f"expires_at={self.expires_at})>"
+        )
