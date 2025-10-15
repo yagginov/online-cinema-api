@@ -39,6 +39,19 @@ class BaseAppSettings(BaseSettings):
     SECRET_KEY_REFRESH: str = os.getenv("SECRET_KEY_REFRESH", os.urandom(32).hex())
     JWT_SIGNING_ALGORITHM: str = os.getenv("JWT_SIGNING_ALGORITHM", "HS256")
 
+    # Stripe
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    PAYMENT_SUCCESS_URL: str = os.getenv(
+        "PAYMENT_SUCCESS_URL",
+        "http://localhost:8000/api/v1/payments/success?session_id={CHECKOUT_SESSION_ID}",
+    )
+    PAYMENT_CANCEL_URL: str = os.getenv(
+        "PAYMENT_CANCEL_URL",
+        "http://localhost:8000/api/v1/payments/cancel",
+    )
+
 
 class Settings(BaseAppSettings):
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "test_user")
@@ -62,11 +75,6 @@ class Settings(BaseAppSettings):
     CELERY_RESULT_BACKEND: str = os.getenv(
         "CELERY_RESULT_BACKEND", f"redis://{os.getenv('REDIS_HOST', 'localhost')}:6379/0"
     )
-
-    # Stripe
-    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
-    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
-    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
     @property
     def REDIS_URL(self) -> str:
