@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from config.dependencies import get_settings as dep_get_settings
 from database.models import MovieModel
@@ -284,3 +284,39 @@ async def test_stripe_failure_returns_502(client, db_session, seed_database, mon
         headers=_auth_header(settings, user.id),
     )
     assert resp.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_create_payment_reuses_pending_session(client, db_session, seed_database, monkeypatch):
+    settings = _override_settings()
+
+    user = await _create_user(db_session)
+    order = await _create_order_for_user(db_session, user.id)
+
+    import stripe
+
+    first_session = {"id": "cs_reuse_1", "url": "https://stripe.test/checkout/cs_reuse_1"}
+    monkeypatch.setattr(stripe.checkout.Session, "create", lambda **kwargs: first_session)
+
+    resp1 = await client.post(
+        f"{URL_PREFIX}/payments/",
+        json={"order_id": order.id},
+        headers=_auth_header(settings, user.id),
+    )
+    assert resp1.status_code == 201
+    url1 = resp1.json()["payment_url"]
+
+    monkeypatch.setattr(stripe.checkout.Session, "retrieve", staticmethod(lambda sid: first_session))
+
+    resp2 = await client.post(
+        f"{URL_PREFIX}/payments/",
+        json={"order_id": order.id},
+        headers=_auth_header(settings, user.id),
+    )
+    assert resp2.status_code == 201
+    url2 = resp2.json()["payment_url"]
+    assert url2 == url1
+
+    result = await db_session.execute(select(func.count()).select_from(PaymentModel))
+    count = result.scalar()
+    assert count == 1
