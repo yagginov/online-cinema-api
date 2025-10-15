@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 class CartRequestSchema(BaseModel):
     user__id: int
 
+
 class CartListItemSchema(BaseModel):
     id: int
     name: str
@@ -36,26 +37,32 @@ class CartResponseSchema(BaseModel):
     class Config:
         orm_mode = True
 
+
 class CartItemAddRequestSchema(BaseModel):
     movie_id: int
+
 
 class CartItemAddResponseSchema(BaseModel):
     id: int
     movies: list[CartListItemSchema]
 
+
 class CartItemRemoveRequestSchema(BaseModel):
     user_id: int
     movie_id: int
 
+
 class CartDeleteRequestSchema(BaseModel):
     user_id: int
+
 
 class CartDeleteResponseSchema(BaseModel):
     user_id: int
 
+
 class CartListRequestSchema(BaseModel):
     user_id: int
 
+
 class CartListResponseSchema(BaseModel):
     items: List[CartListItemSchema]
-
