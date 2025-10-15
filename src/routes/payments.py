@@ -212,6 +212,9 @@ async def stripe_webhook(
         if payment:
             order = await db.get(OrderModel, payment.order_id)
             payment.status = PaymentStatus.SUCCESSFUL
+            payment_intent = data_object.get("payment_intent")
+            if isinstance(payment_intent, str):
+                payment.external_payment_intent_id = payment_intent
             if order and order.status == OrderStatus.PENDING:
                 order.status = OrderStatus.PAID
                 db.add(order)
@@ -235,6 +238,27 @@ async def stripe_webhook(
         payment = await _get_payment_by_session_data(data_object, payment_repo)
         if payment and payment.status == PaymentStatus.PENDING:
             payment.status = PaymentStatus.CANCELED
+            db.add(payment)
+            await db.commit()
+        return {"status": "ok"}
+
+    if event_type in {"charge.refunded", "refund.updated", "refund.created"}:
+        payment: PaymentModel | None = None
+        payment_intent = data_object.get("payment_intent")
+        charge_id = data_object.get("charge") or data_object.get("id") if data_object.get("object") == "charge" else None
+        if payment_intent:
+            payment = await payment_repo.get_object(external_payment_intent_id=payment_intent)
+        elif charge_id and settings.STRIPE_SECRET_KEY:
+            try:
+                stripe.api_key = settings.STRIPE_SECRET_KEY
+                charge = stripe.Charge.retrieve(charge_id)
+                pi = charge.get("payment_intent")
+                if pi:
+                    payment = await payment_repo.get_object(external_payment_intent_id=pi)
+            except Exception:
+                payment = None
+        if payment:
+            payment.status = PaymentStatus.REFUNDED
             db.add(payment)
             await db.commit()
         return {"status": "ok"}
