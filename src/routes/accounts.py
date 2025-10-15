@@ -133,8 +133,9 @@ async def register_user(
     status_code=status.HTTP_200_OK,
     responses={
         400: {
-            "description": "Bad Request - The activation token is invalid or expired, "
-            "or the user account is already active.",
+            "description": (
+                "Bad Request - The activation token is invalid or expired, " "or the user account is already active."
+            ),
             "content": {
                 "application/json": {
                     "examples": {
@@ -211,7 +212,6 @@ async def activate_account(
     background_tasks.add_task(email_sender.send_activation_complete_email, str(user.email), login_link)
 
     return MessageResponseSchema(message="User account activated successfully.")
-
 
 
 @router.post(
