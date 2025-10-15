@@ -9,6 +9,8 @@ from sqlalchemy.orm import joinedload
 
 from database import get_db
 from database.models import CertificationModel, DirectorModel, GenreModel, MovieModel, StarModel
+from filters.movie_filters import MovieSearchParams
+from services.movie_filter_service import MovieSearchService
 
 from ..generic import AsyncRepository
 from .certifications import CertificationRepository
@@ -158,6 +160,17 @@ class MovieRepository(AsyncRepository[MovieModel]):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def search_movies(
+            self,
+            search_params: MovieSearchParams,
+            load_relationships: bool = True
+    ) -> tuple[list[MovieModel], int]:
+
+        return await MovieSearchService.search_movies(
+            db=self.session,
+            search_params=search_params,
+            load_relationships=load_relationships
+        )
 
 async def get_movie_repository(
     db: Annotated[AsyncSession, Depends(get_db)],
