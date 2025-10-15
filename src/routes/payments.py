@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+from typing import Annotated
 from decimal import Decimal
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from config.dependencies import get_jwt_auth_manager, get_settings
 from config.settings import BaseAppSettings
@@ -15,6 +14,8 @@ from database.models.orders import OrderItemModel, OrderModel
 from database.models.payments import PaymentItemModel, PaymentModel
 from enums.order_enums import OrderStatus
 from enums.payment_enums import PaymentStatus
+from repositories.orders import OrderRepository, get_order_repository
+from repositories.payments import PaymentRepository, get_payment_repository
 from schemas.payments import PaymentCreateRequestSchema, PaymentCreateResponseSchema
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
@@ -41,6 +42,8 @@ def _get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
 )
 async def create_payment(
     data: PaymentCreateRequestSchema,
+    order_repo: Annotated[OrderRepository, Depends(get_order_repository)],
+    payment_repo: Annotated[PaymentRepository, Depends(get_payment_repository)],
     token: str = Depends(get_token),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     db: AsyncSession = Depends(get_db),
@@ -51,16 +54,7 @@ async def create_payment(
 
     user_id = _get_user_id(token, jwt_manager)
 
-    stmt = (
-        select(OrderModel)
-        .where(OrderModel.id == data.order_id)
-        .options(selectinload(OrderModel.items).selectinload(OrderItemModel.movie))
-    )
-    result = await db.execute(stmt)
-    order: OrderModel | None = result.scalars().first()
-
-    if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    order: OrderModel = await order_repo.get_object_or_404(id=data.order_id)
     if order.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     if order.status != OrderStatus.PENDING:
@@ -68,21 +62,38 @@ async def create_payment(
     if order.total_amount is None or Decimal(str(order.total_amount)) <= Decimal("0"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order has invalid total amount")
 
-    existing_stmt = select(PaymentModel).where(
-        PaymentModel.order_id == order.id, PaymentModel.status == PaymentStatus.SUCCESSFUL
-    )
-    existing_result = await db.execute(existing_stmt)
-    if existing_result.scalars().first():
+    if await payment_repo.get_object(order_id=order.id, status=PaymentStatus.SUCCESSFUL):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order already paid")
 
-    payment = PaymentModel(
-        user_id=user_id,
-        order_id=order.id,
-        status=PaymentStatus.PENDING,
-        amount=order.total_amount,
+    existing_pending: PaymentModel | None = await payment_repo.get_object(
+        order_id=order.id, status=PaymentStatus.PENDING
     )
-    db.add(payment)
-    await db.flush()
+    if existing_pending and existing_pending.external_payment_id:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        try:
+            session = stripe.checkout.Session.retrieve(existing_pending.external_payment_id)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Stripe error: {e}") from e
+        return PaymentCreateResponseSchema.model_validate(
+            {
+                "id": existing_pending.id,
+                "order_id": existing_pending.order_id,
+                "status": existing_pending.status,
+                "amount": existing_pending.amount,
+                "created_at": existing_pending.created_at,
+                "payment_url": session.get("url"),
+            }
+        )
+
+    payment = await payment_repo.create_object(
+        {
+            "user_id": user_id,
+            "order_id": order.id,
+            "status": PaymentStatus.PENDING,
+            "amount": order.total_amount,
+        },
+        flush_only=True,
+    )
 
     for item in order.items:
         db.add(
@@ -149,6 +160,7 @@ async def create_payment(
 )
 async def stripe_webhook(
     request: Request,
+    payment_repo: Annotated[PaymentRepository, Depends(get_payment_repository)],
     db: AsyncSession = Depends(get_db),
     settings: BaseAppSettings = Depends(get_settings),
 ):
@@ -171,14 +183,10 @@ async def stripe_webhook(
         metadata = data_object.get("metadata") or {}
         payment_id = metadata.get("payment_id")
         if payment_id and str(payment_id).isdigit():
-            stmt = select(PaymentModel).where(PaymentModel.id == int(payment_id))
-            res = await db.execute(stmt)
-            return res.scalars().first()
+            return await payment_repo.get_object(id=int(payment_id))
         session_id = data_object.get("id")
         if session_id:
-            stmt = select(PaymentModel).where(PaymentModel.external_payment_id == session_id)
-            res = await db.execute(stmt)
-            return res.scalars().first()
+            return await payment_repo.get_by_external_payment_id(session_id)
         return None
 
     payment: PaymentModel | None = None
