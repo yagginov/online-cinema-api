@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from typing import cast
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +38,7 @@ router = APIRouter()
 
 @router.post(
     "/register/",
+    name="register_account",
     response_model=UserRegistrationResponseSchema,
     summary="User Registration",
     description="Register a new user with an email and password.",
@@ -55,6 +57,8 @@ router = APIRouter()
     },
 )
 async def register_user(
+    request: Request,
+    background_tasks: BackgroundTasks,
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
     email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
@@ -69,7 +73,6 @@ async def register_user(
     Args:
         user_data (UserRegistrationRequestSchema): The registration details including email and password.
         db (AsyncSession): The asynchronous database session.
-        email_sender (EmailSenderInterface): The asynchronous email sender.
 
     Returns:
         UserRegistrationResponseSchema: The newly created user's details.
@@ -107,30 +110,31 @@ async def register_user(
 
         await db.commit()
         await db.refresh(new_user)
+
+        activation_link = f"{request.url_for('activate_account')}?{urlencode({'token': activation_token.token})}"
+
+        background_tasks.add_task(email_sender.send_activation_email, str(new_user.email), activation_link)
+
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred during user creation."
         ) from e
     else:
-        activation_link = "http://127.0.0.1/accounts/activate/"
-
-        await email_sender.send_activation_email(new_user.email, activation_link)
-
         return UserRegistrationResponseSchema.model_validate(new_user)
 
 
 @router.post(
     "/activate/",
+    name="activate_account",
     response_model=MessageResponseSchema,
     summary="Activate User Account",
     description="Activate a user's account using their email and activation token.",
     status_code=status.HTTP_200_OK,
     responses={
         400: {
-            "description": (
-                "Bad Request - The activation token is invalid or expired, " "or the user account is already active."
-            ),
+            "description": "Bad Request - The activation token is invalid or expired, "
+            "or the user account is already active.",
             "content": {
                 "application/json": {
                     "examples": {
@@ -149,6 +153,8 @@ async def register_user(
     },
 )
 async def activate_account(
+    request: Request,
+    background_tasks: BackgroundTasks,
     activation_data: UserActivationRequestSchema,
     db: AsyncSession = Depends(get_db),
     email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
@@ -164,7 +170,6 @@ async def activate_account(
     Args:
         activation_data (UserActivationRequestSchema): Contains the user's email and activation token.
         db (AsyncSession): The asynchronous database session.
-        email_sender (EmailSenderInterface): The asynchronous email sender.
 
     Returns:
         MessageResponseSchema: A response message confirming successful activation.
@@ -178,7 +183,10 @@ async def activate_account(
         select(ActivationToken)
         .options(joinedload(ActivationToken.user))
         .join(User)
-        .where(User.email == activation_data.email, ActivationToken.token == activation_data.token)
+        .where(
+            User.email == activation_data.email,
+            ActivationToken.token == activation_data.token,
+        )
     )
     result = await db.execute(stmt)
     token_record = result.scalars().first()
@@ -198,11 +206,12 @@ async def activate_account(
     await db.delete(token_record)
     await db.commit()
 
-    login_link = "http://127.0.0.1/accounts/login/"
+    login_link = str(request.url_for("login"))
 
-    await email_sender.send_activation_complete_email(str(activation_data.email), login_link)
+    background_tasks.add_task(email_sender.send_activation_complete_email, str(user.email), login_link)
 
     return MessageResponseSchema(message="User account activated successfully.")
+
 
 
 @router.post(
