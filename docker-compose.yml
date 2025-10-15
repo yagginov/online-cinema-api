@@ -66,6 +66,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     volumes:
       - ./src:/usr/src/fastapi
     networks:
@@ -126,6 +128,23 @@ services:
     networks:
       - cinema_network
     restart: on-failure
+
+  mailhog:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./docker/mailhog/Dockerfile
+    container_name: mailhog_cinema
+    command: [ "/bin/bash", "-c", "/commands/setup_mailhog_auth.sh && /go/bin/MailHog" ]
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    env_file:
+      - .env
+    environment:
+      MH_AUTH_FILE: /mailhog.auth
+    networks:
+      - cinema_network
 
 volumes:
   postgres_cinema_data:
