@@ -4,4 +4,3 @@ __all__ = [
     "PaymentRepository",
     "get_payment_repository",
 ]
-
