@@ -103,13 +103,13 @@ class User(Base):
         Set the user's password after validating its strength and hashing it.
         """
         validators.validate_password_strength(raw_password)
-        self.hashed_password = hash_password(raw_password)
+        self._hashed_password = hash_password(raw_password)
 
     def verify_password(self, raw_password: str) -> bool:
         """
         Verify the provided password against the stored hashed password.
         """
-        return verify_password(raw_password, self.hashed_password)
+        return verify_password(raw_password, self._hashed_password)
 
     @validates("email")
     def validate_email(self, key, value):
