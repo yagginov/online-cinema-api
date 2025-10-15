@@ -11,6 +11,7 @@ from fastapi import (
 )
 from pydantic import AnyUrl
 
+from filters.movie_filters import MovieSearchParams
 from repositories.movies import MovieRepository, get_movie_repository
 from schemas.errors import NotFoundErrorResponse
 from schemas.movies import (
@@ -67,6 +68,87 @@ async def get_movies(
         items=[MovieListItemSchema.model_validate(movie) for movie in movies],
         page=page,
         size=size,
+        total_items=total,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )
+
+
+@router.get(
+    "/movies/search/",
+    response_model=MoviePaginatedResponseSchema,
+    summary="Search movies",
+    description="Search movies by title, description, star names, or director names.",
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "No search parameters provided.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": (
+                            "At least one search parameter must be provided (title, "
+                            "description, star_names, or director_names)"
+                        )
+                    }
+                },
+            },
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "No movies found matching the search criteria.",
+            "model": NotFoundErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": NotFoundErrorResponse(detail="No movies found matching the search criteria."),
+                },
+            },
+        },
+    },
+)
+async def search_movies(
+    request: Request,
+    search_params: Annotated[MovieSearchParams, Depends()],
+    movie_repo: Annotated[MovieRepository, Depends(get_movie_repository)],
+) -> MoviePaginatedResponseSchema:
+    if not any(
+        [
+            search_params.title,
+            search_params.description,
+            search_params.star_names,
+            search_params.director_names,
+        ]
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one search parameter must be provided "
+            "(title, description, star_names, or director_names)",
+        )
+
+    movies, total = await movie_repo.search_movies(
+        search_params=search_params,
+        load_relationships=True,
+    )
+
+    if not movies:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No movies found matching the search criteria.",
+        )
+    total_pages = math.ceil(total / search_params.per_page)
+
+    next_page = (
+        AnyUrl(str(request.url.replace_query_params(page=search_params.page + 1)))
+        if search_params.page < total_pages
+        else None
+    )
+    prev_page = (
+        AnyUrl(str(request.url.replace_query_params(page=search_params.page - 1))) if search_params.page > 1 else None
+    )
+
+    return MoviePaginatedResponseSchema(
+        items=[MovieListItemSchema.model_validate(movie) for movie in movies],
+        page=search_params.page,
+        size=search_params.per_page,
         total_items=total,
         total_pages=total_pages,
         prev_page=prev_page,

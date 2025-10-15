@@ -81,3 +81,23 @@ class MovieFilterParams(BasePaginationParams, BaseSortParams):
 
         if self.min_price and self.max_price and self.min_price > self.max_price:
             raise ValueError("min_price cannot be greater than max_price")
+
+
+class MovieSearchParams(BasePaginationParams):
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, min_length=1)
+    star_names: Optional[str] = Field(None, description="Comma-separated star names")
+    director_names: Optional[str] = Field(None, description="Comma-separated director names")
+
+    sort_by: MovieSortByEnum = Field(default=MovieSortByEnum.IMDB)
+    sort_order: SortOrderEnum = Field(default=SortOrderEnum.DESC)
+
+    def get_star_names_list(self) -> Optional[List[str]]:
+        if not self.star_names:
+            return None
+        return [name.strip() for name in self.star_names.split(",") if name.strip()]
+
+    def get_director_names_list(self) -> Optional[List[str]]:
+        if not self.director_names:
+            return None
+        return [name.strip() for name in self.director_names.split(",") if name.strip()]
