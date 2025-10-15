@@ -2,23 +2,35 @@ from __future__ import annotations
 
 from typing import Annotated
 from decimal import Decimal
+import math
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import AnyUrl
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.dependencies import get_jwt_auth_manager, get_settings
+from config.dependencies import get_accounts_email_notificator
 from config.settings import BaseAppSettings
 from database import get_db
 from database.models.orders import OrderItemModel, OrderModel
 from database.models.payments import PaymentItemModel, PaymentModel
+from database.models.accounts import User, UserGroup, UserGroupEnum
 from enums.order_enums import OrderStatus
 from enums.payment_enums import PaymentStatus
 from repositories.orders import OrderRepository, get_order_repository
 from repositories.payments import PaymentRepository, get_payment_repository
-from schemas.payments import PaymentCreateRequestSchema, PaymentCreateResponseSchema
+from schemas.payments import (
+    PaymentCreateRequestSchema,
+    PaymentCreateResponseSchema,
+    PaymentPaginatedResponseSchema,
+    PaymentResponseSchema,
+)
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
+from filters.payment_filters import PaymentFilterParams
+from notifications.interfaces import EmailSenderInterface
 
 router = APIRouter()
 
@@ -32,6 +44,19 @@ def _get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
         return user_id
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from e
+
+
+async def _get_payment_by_session_data(
+    data_object: dict, payment_repo: PaymentRepository
+) -> PaymentModel | None:
+    metadata = data_object.get("metadata") or {}
+    payment_id = metadata.get("payment_id")
+    if payment_id and str(payment_id).isdigit():
+        return await payment_repo.get_object(id=int(payment_id))
+    session_id = data_object.get("id")
+    if session_id:
+        return await payment_repo.get_by_external_payment_id(session_id)
+    return None
 
 
 @router.post(
@@ -163,6 +188,7 @@ async def stripe_webhook(
     payment_repo: Annotated[PaymentRepository, Depends(get_payment_repository)],
     db: AsyncSession = Depends(get_db),
     settings: BaseAppSettings = Depends(get_settings),
+    email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
 ):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -179,20 +205,10 @@ async def stripe_webhook(
     event_type: str = event.get("type", "")
     data_object = event.get("data", {}).get("object", {})
 
-    async def _get_payment_by_session() -> PaymentModel | None:
-        metadata = data_object.get("metadata") or {}
-        payment_id = metadata.get("payment_id")
-        if payment_id and str(payment_id).isdigit():
-            return await payment_repo.get_object(id=int(payment_id))
-        session_id = data_object.get("id")
-        if session_id:
-            return await payment_repo.get_by_external_payment_id(session_id)
-        return None
-
     payment: PaymentModel | None = None
 
     if event_type == "checkout.session.completed":
-        payment = await _get_payment_by_session()
+        payment = await _get_payment_by_session_data(data_object, payment_repo)
         if payment:
             order = await db.get(OrderModel, payment.order_id)
             payment.status = PaymentStatus.SUCCESSFUL
@@ -201,10 +217,22 @@ async def stripe_webhook(
                 db.add(order)
             db.add(payment)
             await db.commit()
+            try:
+                user = await db.get(User, payment.user_id)
+                if user and user.email:
+                    await email_sender.send_payment_receipt_email(
+                        email=user.email,
+                        payment_id=payment.id,
+                        order_id=payment.order_id,
+                        amount=str(payment.amount),
+                        created_at=payment.created_at.isoformat(),
+                    )
+            except Exception:
+                pass
         return {"status": "ok"}
 
     if event_type == "checkout.session.expired":
-        payment = await _get_payment_by_session()
+        payment = await _get_payment_by_session_data(data_object, payment_repo)
         if payment and payment.status == PaymentStatus.PENDING:
             payment.status = PaymentStatus.CANCELED
             db.add(payment)
@@ -222,3 +250,101 @@ async def payment_success(session_id: str | None = None):
 @router.get("/payments/cancel", summary="Payment cancel redirect handler")
 async def payment_cancel():
     return {"status": "canceled"}
+
+
+@router.get(
+    "/payments/",
+    response_model=PaymentPaginatedResponseSchema,
+    summary="List my payments",
+)
+async def list_my_payments(
+    request: Request,
+    params: Annotated[PaymentFilterParams, Depends()],
+    payment_repo: Annotated[PaymentRepository, Depends(get_payment_repository)],
+    token: str = Depends(get_token),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+) -> PaymentPaginatedResponseSchema:
+    user_id = _get_user_id(token, jwt_manager)
+    items, total = await payment_repo.list_payments(params, user_id=user_id)
+    total_pages = max(1, math.ceil(total / params.per_page)) if total else 1
+    next_page = (
+        AnyUrl(str(request.url.replace_query_params(page=params.page + 1)))
+        if params.page < total_pages
+        else None
+    )
+    prev_page = AnyUrl(str(request.url.replace_query_params(page=params.page - 1))) if params.page > 1 else None
+    return PaymentPaginatedResponseSchema(
+        items=[
+            PaymentResponseSchema.model_validate(
+                {
+                    "id": p.id,
+                    "order_id": p.order_id,
+                    "user_id": p.user_id,
+                    "status": p.status,
+                    "amount": p.amount,
+                    "created_at": p.created_at,
+                }
+            )
+            for p in items
+        ],
+        page=params.page,
+        size=params.per_page,
+        total_items=total,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )
+
+
+@router.get(
+    "/admin/payments/",
+    response_model=PaymentPaginatedResponseSchema,
+    summary="Admin list payments",
+)
+async def admin_list_payments(
+    request: Request,
+    params: Annotated[PaymentFilterParams, Depends()],
+    payment_repo: Annotated[PaymentRepository, Depends(get_payment_repository)],
+    token: str = Depends(get_token),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    db: AsyncSession = Depends(get_db),
+) -> PaymentPaginatedResponseSchema:
+    user_id = _get_user_id(token, jwt_manager)
+    role_stmt = (
+        select(UserGroup.name)
+        .join(User, User.group_id == UserGroup.id)
+        .where(User.id == user_id)
+    )
+    role_res = await db.execute(role_stmt)
+    role = role_res.scalar_one_or_none()
+    if role not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    items, total = await payment_repo.list_payments(params)
+    total_pages = max(1, math.ceil(total / params.per_page)) if total else 1
+    next_page = (
+        AnyUrl(str(request.url.replace_query_params(page=params.page + 1)))
+        if params.page < total_pages
+        else None
+    )
+    prev_page = AnyUrl(str(request.url.replace_query_params(page=params.page - 1))) if params.page > 1 else None
+    return PaymentPaginatedResponseSchema(
+        items=[
+            PaymentResponseSchema.model_validate(
+                {
+                    "id": p.id,
+                    "order_id": p.order_id,
+                    "user_id": p.user_id,
+                    "status": p.status,
+                    "amount": p.amount,
+                    "created_at": p.created_at,
+                }
+            )
+            for p in items
+        ],
+        page=params.page,
+        size=params.per_page,
+        total_items=total,
+        total_pages=total_pages,
+        prev_page=prev_page,
+        next_page=next_page,
+    )

@@ -23,6 +23,7 @@ class EmailSender(EmailSenderInterface):
         activation_complete_email_template_name: str,
         password_email_template_name: str,
         password_complete_email_template_name: str,
+        payment_receipt_template_name: str = "payment_receipt.html",
     ):
         self._hostname = hostname
         self._port = port
@@ -33,6 +34,7 @@ class EmailSender(EmailSenderInterface):
         self._activation_complete_email_template_name = activation_complete_email_template_name
         self._password_email_template_name = password_email_template_name
         self._password_complete_email_template_name = password_complete_email_template_name
+        self._payment_receipt_template_name = payment_receipt_template_name
 
         self._env = Environment(loader=FileSystemLoader(template_dir))
 
@@ -88,6 +90,26 @@ class EmailSender(EmailSenderInterface):
         template = self._env.get_template(self._activation_complete_email_template_name)
         html_content = template.render(email=email, login_link=login_link)
         subject = "Account Activated Successfully"
+        await self._send_email(email, subject, html_content)
+
+    async def send_payment_receipt_email(
+        self,
+        email: str,
+        *,
+        payment_id: int,
+        order_id: int,
+        amount: str,
+        created_at: str,
+    ) -> None:
+        template = self._env.get_template(self._payment_receipt_template_name)
+        html_content = template.render(
+            email=email,
+            payment_id=payment_id,
+            order_id=order_id,
+            amount=amount,
+            created_at=created_at,
+        )
+        subject = "Payment Confirmation"
         await self._send_email(email, subject, html_content)
 
     async def send_password_reset_email(self, email: str, reset_link: str) -> None:

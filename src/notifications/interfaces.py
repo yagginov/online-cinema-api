@@ -46,3 +46,25 @@ class EmailSenderInterface(ABC):
             login_link (str): The login link to include in the email.
         """
         pass
+
+    @abstractmethod
+    async def send_payment_receipt_email(
+        self,
+        email: str,
+        *,
+        payment_id: int,
+        order_id: int,
+        amount: str,
+        created_at: str,
+    ) -> None:
+        """
+        Asynchronously send a payment receipt email.
+
+        Args:
+            email (str): The recipient's email address.
+            payment_id (int): The payment identifier.
+            order_id (int): The related order identifier.
+            amount (str): The payment amount as a string.
+            created_at (str): ISO 8601 string for payment creation time.
+        """
+        pass
