@@ -1,6 +1,6 @@
 from .certifications import CertificationSchema
 from .directors import DirectorSchema
-from .genres import GenreSchema
+from .genres import GenreResponseSchema, GenreSchema
 from .movies import (
     MovieCreateRequestSchema,
     MovieDetailResponseSchema,
