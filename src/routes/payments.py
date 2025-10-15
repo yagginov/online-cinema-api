@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Annotated
-from decimal import Decimal
 import math
+from decimal import Decimal
+from typing import Annotated
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -10,15 +10,16 @@ from pydantic import AnyUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config.dependencies import get_jwt_auth_manager, get_settings
-from config.dependencies import get_accounts_email_notificator
+from config.dependencies import get_accounts_email_notificator, get_jwt_auth_manager, get_settings
 from config.settings import BaseAppSettings
 from database import get_db
+from database.models.accounts import User, UserGroup, UserGroupEnum
 from database.models.orders import OrderItemModel, OrderModel
 from database.models.payments import PaymentItemModel, PaymentModel
-from database.models.accounts import User, UserGroup, UserGroupEnum
 from enums.order_enums import OrderStatus
 from enums.payment_enums import PaymentStatus
+from filters.payment_filters import PaymentFilterParams
+from notifications.interfaces import EmailSenderInterface
 from repositories.orders import OrderRepository, get_order_repository
 from repositories.payments import PaymentRepository, get_payment_repository
 from schemas.payments import (
@@ -29,8 +30,6 @@ from schemas.payments import (
 )
 from security.http import get_token
 from security.interfaces import JWTAuthManagerInterface
-from filters.payment_filters import PaymentFilterParams
-from notifications.interfaces import EmailSenderInterface
 
 router = APIRouter()
 
@@ -46,9 +45,7 @@ def _get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from e
 
 
-async def _get_payment_by_session_data(
-    data_object: dict, payment_repo: PaymentRepository
-) -> PaymentModel | None:
+async def _get_payment_by_session_data(data_object: dict, payment_repo: PaymentRepository) -> PaymentModel | None:
     metadata = data_object.get("metadata") or {}
     payment_id = metadata.get("payment_id")
     if payment_id and str(payment_id).isdigit():
@@ -204,11 +201,9 @@ async def stripe_webhook(
 
     event_type: str = event.get("type", "")
     data_object = event.get("data", {}).get("object", {})
-
-    payment: PaymentModel | None = None
+    payment = await _get_payment_by_session_data(data_object, payment_repo)
 
     if event_type == "checkout.session.completed":
-        payment = await _get_payment_by_session_data(data_object, payment_repo)
         if payment:
             order = await db.get(OrderModel, payment.order_id)
             payment.status = PaymentStatus.SUCCESSFUL
@@ -235,7 +230,6 @@ async def stripe_webhook(
         return {"status": "ok"}
 
     if event_type == "checkout.session.expired":
-        payment = await _get_payment_by_session_data(data_object, payment_repo)
         if payment and payment.status == PaymentStatus.PENDING:
             payment.status = PaymentStatus.CANCELED
             db.add(payment)
@@ -243,9 +237,10 @@ async def stripe_webhook(
         return {"status": "ok"}
 
     if event_type in {"charge.refunded", "refund.updated", "refund.created"}:
-        payment: PaymentModel | None = None
         payment_intent = data_object.get("payment_intent")
-        charge_id = data_object.get("charge") or data_object.get("id") if data_object.get("object") == "charge" else None
+        charge_id = (
+            data_object.get("charge") or data_object.get("id") if data_object.get("object") == "charge" else None
+        )
         if payment_intent:
             payment = await payment_repo.get_object(external_payment_intent_id=payment_intent)
         elif charge_id and settings.STRIPE_SECRET_KEY:
@@ -292,9 +287,7 @@ async def list_my_payments(
     items, total = await payment_repo.list_payments(params, user_id=user_id)
     total_pages = max(1, math.ceil(total / params.per_page)) if total else 1
     next_page = (
-        AnyUrl(str(request.url.replace_query_params(page=params.page + 1)))
-        if params.page < total_pages
-        else None
+        AnyUrl(str(request.url.replace_query_params(page=params.page + 1))) if params.page < total_pages else None
     )
     prev_page = AnyUrl(str(request.url.replace_query_params(page=params.page - 1))) if params.page > 1 else None
     return PaymentPaginatedResponseSchema(
@@ -334,11 +327,7 @@ async def admin_list_payments(
     db: AsyncSession = Depends(get_db),
 ) -> PaymentPaginatedResponseSchema:
     user_id = _get_user_id(token, jwt_manager)
-    role_stmt = (
-        select(UserGroup.name)
-        .join(User, User.group_id == UserGroup.id)
-        .where(User.id == user_id)
-    )
+    role_stmt = select(UserGroup.name).join(User, User.group_id == UserGroup.id).where(User.id == user_id)
     role_res = await db.execute(role_stmt)
     role = role_res.scalar_one_or_none()
     if role not in (UserGroupEnum.ADMIN, UserGroupEnum.MODERATOR):
@@ -346,9 +335,7 @@ async def admin_list_payments(
     items, total = await payment_repo.list_payments(params)
     total_pages = max(1, math.ceil(total / params.per_page)) if total else 1
     next_page = (
-        AnyUrl(str(request.url.replace_query_params(page=params.page + 1)))
-        if params.page < total_pages
-        else None
+        AnyUrl(str(request.url.replace_query_params(page=params.page + 1))) if params.page < total_pages else None
     )
     prev_page = AnyUrl(str(request.url.replace_query_params(page=params.page - 1))) if params.page > 1 else None
     return PaymentPaginatedResponseSchema(

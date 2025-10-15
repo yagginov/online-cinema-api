@@ -1,11 +1,11 @@
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import select
 
 from database.models import MovieModel
 from database.models.accounts import User, UserGroup, UserGroupEnum
 from database.models.orders import OrderModel
 from repositories.orders import OrderRepository
-from fastapi import HTTPException
 
 
 async def _get_or_create_user_group(db_session) -> UserGroup:
@@ -78,4 +78,3 @@ async def test_get_object_and_total_and_ordering(db_session, seed_database):
 
     total = await repo.get_total(filters={"user_id": user.id})
     assert total >= 2
-
