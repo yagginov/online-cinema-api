@@ -12,13 +12,27 @@ handle_error() {
 # Navigate to the application directory
 cd /home/ubuntu/src/online-cinema-api || handle_error "Failed to navigate to the application directory."
 
+# get deploy branch from environments
+BRANCH=${DEPLOY_BRANCH:-main}
+git fetch origin "$BRANCH"
+git reset --hard "origin/$BRANCH"
+
 # Fetch the latest changes from the remote repository
 echo "Fetching the latest changes from the remote repository..."
-git fetch origin chore/T-037-setup-cd-pipeline || handle_error "Failed to fetch updates from the 'origin' remote."
+git fetch origin "$BRANCH" || handle_error "Failed to fetch updates from the 'origin' remote."
+
+# checkout to deploy branch
+git checkout $BRANCH
 
 # Reset the local repository to match the remote 'main' branch
 echo "Resetting the local repository to match 'origin/main'..."
-git reset --hard origin/chore/T-037-setup-cd-pipeline || handle_error "Failed to reset the local repository to 'origin/chore/T-037-setup-cd-pipeline'."
+git reset --hard "origin/$BRANCH" || handle_error "Failed to reset the local repository to 'origin/'."
+
+# stop all active docker containers
+docker stop $(docker ps -q)
+
+# delete all previous docker containers
+docker container prune -f
 
 # (Optional) Pull any new tags from the remote repository
 echo "Fetching tags from the remote repository..."
