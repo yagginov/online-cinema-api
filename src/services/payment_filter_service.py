@@ -56,4 +56,3 @@ class PaymentFilterService:
         total = total_result.scalar() or 0
 
         return items, int(total)
-

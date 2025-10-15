@@ -7,9 +7,9 @@ from sqlalchemy.orm import joinedload
 
 from database import get_db
 from database.models.payments import PaymentModel
+from filters.payment_filters import PaymentFilterParams
 from repositories.generic import AsyncRepository
 from services.payment_filter_service import PaymentFilterService
-from filters.payment_filters import PaymentFilterParams
 
 
 class PaymentRepository(AsyncRepository[PaymentModel]):
