@@ -1,15 +1,20 @@
+from unittest.mock import patch, AsyncMock
+
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import func, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_settings
 from database import (
     get_db_contextmanager,
-    reset_database,
+    reset_database, UserGroup,
 )
+from database.models import UserGroupEnum
 from database.populate import CSVDatabaseSeeder
 from main import app
+from security.interfaces import JWTAuthManagerInterface
+from security.token_manager import JWTAuthManager
 
 
 def pytest_configure(config):
@@ -109,13 +114,13 @@ async def e2e_db_session():
 # @pytest_asyncio.fixture(scope="function")
 # async def seed_user_groups(db_session: AsyncSession):
 #     """
-#     Asynchronously seed the UserGroupModel table with default user groups.
-
+#     Asynchronously seed the UserGroup table with default user groups.
+#
 #     This fixture inserts all user groups defined in UserGroupEnum into the database and commits the transaction.
 #     It then yields the asynchronous database session for further testing.
 #     """
 #     groups = [{"name": group.value} for group in UserGroupEnum]
-#     await db_session.execute(insert(UserGroupModel).values(groups))
+#     await db_session.execute(insert(UserGroup).values(groups))
 #     await db_session.commit()
 #     yield db_session
 
@@ -141,3 +146,41 @@ async def seed_database(db_session):
         await seeder.seed()
 
     yield db_session
+
+@pytest_asyncio.fixture(scope="function")
+async def jwt_manager() -> JWTAuthManagerInterface:
+    """
+    Asynchronous fixture to create a JWT authentication manager instance.
+
+    This fixture retrieves the application settings via `get_settings()` and uses them to
+    instantiate a `JWTAuthManager`. The manager is configured with the secret keys for
+    access and refresh tokens, as well as the JWT signing algorithm specified in the settings.
+
+    Returns:
+        JWTAuthManagerInterface: An instance of JWTAuthManager configured with the appropriate
+        secret keys and algorithm.
+    """
+    settings = get_settings()
+    return JWTAuthManager(
+        secret_key_access=settings.SECRET_KEY_ACCESS,
+        secret_key_refresh=settings.SECRET_KEY_REFRESH,
+        algorithm=settings.JWT_SIGNING_ALGORITHM
+    )
+
+@pytest_asyncio.fixture(scope="function")
+async def seed_user_groups(db_session: AsyncSession):
+    """
+    Seed UserGroup table with default groups and return the created group objects.
+    """
+    groups = [UserGroup(name=group.value) for group in UserGroupEnum]
+    db_session.add_all(groups)
+    await db_session.commit()
+    for group in groups:
+        await db_session.refresh(group)
+    yield groups
+
+
+@pytest.fixture(autouse=True)
+def mock_email_sending():
+    with patch("notifications.emails.EmailSender._send_email", new_callable=AsyncMock) as mock:
+        yield mock
