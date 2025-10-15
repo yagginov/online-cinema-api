@@ -169,20 +169,23 @@ def build_paginated_response(
         per_page: int,
         request: Request,
 ) -> MoviePaginatedResponseSchema:
-
     total_pages = ceil(total / per_page) if per_page > 0 else 1
 
-    next_page = (
-        AnyUrl(str(request.url.replace_query_params(page=page + 1)))
-        if page < total_pages
-        else None
-    )
+    query_params = dict(request.query_params)
 
-    prev_page = (
-        AnyUrl(str(request.url.replace_query_params(page=page - 1)))
-        if page > 1
-        else None
-    )
+    if page < total_pages:
+        next_params = {**query_params, "page": page + 1}
+        next_url = str(request.url.replace_query_params(**next_params))
+        next_page = AnyUrl(next_url)
+    else:
+        next_page = None
+
+    if page > 1:
+        prev_params = {**query_params, "page": page - 1}
+        prev_url = str(request.url.replace_query_params(**prev_params))
+        prev_page = AnyUrl(prev_url)
+    else:
+        prev_page = None
 
     return MoviePaginatedResponseSchema(
         items=[MovieListItemSchema.model_validate(movie) for movie in movies],
