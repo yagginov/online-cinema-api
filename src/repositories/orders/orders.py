@@ -42,7 +42,8 @@ class OrderRepository(AsyncRepository[OrderModel]):
 
     @staticmethod
     def _with_items(stmt: Select) -> Select:
-        return stmt.options(joinedload(OrderModel.items))
+        # Eager-load order items and their related movies to avoid N+1 queries
+        return stmt.options(joinedload(OrderModel.items).joinedload(OrderItemModel.movie))
 
     async def get_object(self, **filters) -> OrderModel | None:
         stmt = self._with_items(select(self.model).filter_by(**filters))

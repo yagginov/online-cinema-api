@@ -10,6 +10,7 @@ from ..pagination import PaginatedResponse
 class OrderItemResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     movie_id: int
+    movie_name: str
     price_at_order: Decimal = Field(..., examples=[Decimal("9.99")])
 
 
