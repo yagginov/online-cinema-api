@@ -57,7 +57,10 @@ async def delete_from_favorites(
     response_model=FavoritesPaginatedResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Get user's favorite movies",
-    description="Retrieve a paginated list of the authenticated user's favorite movies (maybe add pagination)",
+    description="""
+    Retrieve a paginated list of the authenticated user's 
+    favorite movies (maybe add pagination)
+    """,
 )
 async def get_favorites(
     request: Request,
