@@ -14,7 +14,6 @@ from schemas.movies.comments import (
     CommentCreateResponseSchema,
     CommentListResponseSchema,
     CommentListItemSchema,
-    CommentListRequestSchema,
     CommentReplyCreateRequestSchema,
     CommentReplyCreateResponseSchema,
     CommentReplyUpdateResponseSchema,
@@ -196,7 +195,7 @@ async def update_comment(
     await db.commit()
     await db.refresh(comment)
 
-    return CommentReplyUpdateResponseSchema(comment)
+    return CommentReplyUpdateResponseSchema.model_validate(comment)
 
 @router.delete(
     "/comments/{comment_id}/",
