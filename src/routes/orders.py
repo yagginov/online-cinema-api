@@ -51,19 +51,11 @@ def get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Invalid or missing authentication token",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Invalid token"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
         },
         status.HTTP_404_NOT_FOUND: {
             "description": "One or more movies not found",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Movie with id=999 not found"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Movie with id=999 not found"}}},
         },
         status.HTTP_400_BAD_REQUEST: {
             "description": "Invalid request data",
@@ -72,17 +64,17 @@ def get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
                     "examples": {
                         "empty_list": {
                             "summary": "Empty movie list",
-                            "value": {"detail": "Movie list cannot be empty"}
+                            "value": {"detail": "Movie list cannot be empty"},
                         },
                         "duplicates": {
                             "summary": "Duplicate movies",
-                            "value": {"detail": "Duplicate movie IDs in the order"}
-                        }
+                            "value": {"detail": "Duplicate movie IDs in the order"},
+                        },
                     }
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 async def create_order(
     data: OrderCreateRequestSchema,
@@ -121,11 +113,7 @@ async def create_order(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Invalid or missing token",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Invalid token"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
         }
     },
 )
@@ -191,27 +179,15 @@ async def list_orders(
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Invalid or missing token",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Invalid token"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
         },
         status.HTTP_403_FORBIDDEN: {
             "description": "Access to another user's order is forbidden",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Forbidden"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Forbidden"}}},
         },
         status.HTTP_404_NOT_FOUND: {
             "description": "Order not found",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Order with id=42 not found"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Order with id=42 not found"}}},
         },
     },
 )
@@ -254,35 +230,19 @@ async def get_order(
     responses={
         status.HTTP_400_BAD_REQUEST: {
             "description": "Order cannot be canceled",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Only pending orders can be canceled"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Only pending orders can be canceled"}}},
         },
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Invalid or missing token",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Invalid token"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
         },
         status.HTTP_403_FORBIDDEN: {
             "description": "Cannot cancel another user's order",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Forbidden"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Forbidden"}}},
         },
         status.HTTP_404_NOT_FOUND: {
             "description": "Order not found",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Order with id=42 not found"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Order with id=42 not found"}}},
         },
     },
 )

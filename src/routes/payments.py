@@ -62,27 +62,20 @@ def _get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
                     "examples": {
                         "not_pending": {
                             "summary": "Order not pending",
-                            "value": {"detail": "Only pending orders can be paid"}
+                            "value": {"detail": "Only pending orders can be paid"},
                         },
-                        "already_paid": {
-                            "summary": "Already paid",
-                            "value": {"detail": "Order already paid"}
-                        },
+                        "already_paid": {"summary": "Already paid", "value": {"detail": "Order already paid"}},
                         "invalid_amount": {
                             "summary": "Invalid amount",
-                            "value": {"detail": "Order has invalid total amount"}
-                        }
+                            "value": {"detail": "Order has invalid total amount"},
+                        },
                     }
                 }
-            }
+            },
         },
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Invalid or missing token",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Invalid token"}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
         },
     },
 )
@@ -214,17 +207,17 @@ async def create_payment(
                     "examples": {
                         "missing_signature": {
                             "summary": "Missing signature",
-                            "value": {"detail": "Missing Stripe signature header"}
+                            "value": {"detail": "Missing Stripe signature header"},
                         },
                         "invalid_signature": {
                             "summary": "Invalid signature",
-                            "value": {"detail": "Invalid webhook signature: ..."}
-                        }
+                            "value": {"detail": "Invalid webhook signature: ..."},
+                        },
                     }
                 }
-            }
+            },
         }
-    }
+    },
 )
 async def stripe_webhook(
     request: Request,
@@ -306,7 +299,7 @@ async def payment_success(session_id: str | None = None):
     Redirect endpoint after canceled payment.
     
     Users are redirected here if they cancel payment on Stripe.
-    """
+    """,
 )
 async def payment_cancel():
     return {"status": "canceled"}
