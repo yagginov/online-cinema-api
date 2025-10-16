@@ -36,6 +36,45 @@ def get_user_id(token: str, jwt_manager: JWTAuthManagerInterface) -> int:
     status_code=status.HTTP_201_CREATED,
     response_model=OrderResponseSchema,
     summary="Create order",
+    description="""
+    Create a new order for selected movies.
+    
+    **Process:**
+    1. Validates JWT token
+    2. Checks if all movies exist
+    3. Calculates total amount
+    4. Creates order with status PENDING
+    5. Locks movie prices at order creation time
+    
+    **Authentication:** Required (Bearer token)
+    """,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Invalid or missing authentication token",
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "One or more movies not found",
+            "content": {"application/json": {"example": {"detail": "Movie with id=999 not found"}}},
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Invalid request data",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "empty_list": {
+                            "summary": "Empty movie list",
+                            "value": {"detail": "Movie list cannot be empty"},
+                        },
+                        "duplicates": {
+                            "summary": "Duplicate movies",
+                            "value": {"detail": "Duplicate movie IDs in the order"},
+                        },
+                    }
+                }
+            },
+        },
+    },
 )
 async def create_order(
     data: OrderCreateRequestSchema,
@@ -64,6 +103,22 @@ async def create_order(
     "/orders/",
     response_model=OrderPaginatedResponseSchema,
     summary="List my orders",
+    description="""
+    Returns paginated list of current user's orders.
+    
+    **Features:**
+    - Orders sorted by creation date (newest first)
+    - Pagination support
+    - Only shows orders belonging to authenticated user
+    
+    **Authentication:** Required (Bearer token)
+    """,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Invalid or missing token",
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
+        }
+    },
 )
 async def list_orders(
     request: Request,
@@ -118,6 +173,29 @@ async def list_orders(
     "/orders/{order_id}/",
     response_model=OrderResponseSchema,
     summary="Get order detail",
+    description="""
+    Returns detailed information about a specific order.
+    
+    **Security:**
+    - Users can only view their own orders
+    - Attempting to access another user's order returns 403 Forbidden
+    
+    **Authentication:** Required (Bearer token)
+    """,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Invalid or missing token",
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Access to another user's order is forbidden",
+            "content": {"application/json": {"example": {"detail": "Forbidden"}}},
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Order not found",
+            "content": {"application/json": {"example": {"detail": "Order with id=42 not found"}}},
+        },
+    },
 )
 async def get_order(
     order_id: int,
@@ -148,6 +226,34 @@ async def get_order(
     "/orders/{order_id}/",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Cancel order",
+    description="""
+    Cancel an existing order.
+    
+    **Rules:**
+    - Only orders with status PENDING can be canceled
+    - Completed or already canceled orders cannot be canceled
+    - Users can only cancel their own orders
+    
+    **Authentication:** Required (Bearer token)
+    """,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Order cannot be canceled",
+            "content": {"application/json": {"example": {"detail": "Only pending orders can be canceled"}}},
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Invalid or missing token",
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Cannot cancel another user's order",
+            "content": {"application/json": {"example": {"detail": "Forbidden"}}},
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Order not found",
+            "content": {"application/json": {"example": {"detail": "Order with id=42 not found"}}},
+        },
+    },
 )
 async def cancel_order(
     order_id: int,

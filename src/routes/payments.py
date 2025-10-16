@@ -61,6 +61,46 @@ async def _get_payment_by_session_data(data_object: dict, payment_repo: PaymentR
     status_code=status.HTTP_201_CREATED,
     response_model=PaymentCreateResponseSchema,
     summary="Create payment and return checkout URL",
+    description="""
+    Create a Stripe payment session for an order and get checkout URL.
+    
+    **Process:**
+    1. Validates order exists and belongs to user
+    2. Checks order status is PENDING
+    3. Verifies order hasn't been paid already
+    4. Creates payment record in database
+    5. Creates Stripe checkout session
+    6. Returns payment URL for redirect
+    
+    **Payment Flow:**
+    - User creates order → Creates payment → Redirects to Stripe → Completes payment → Webhook updates status
+    
+    **Authentication:** Required (Bearer token)
+    """,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Invalid order state",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "not_pending": {
+                            "summary": "Order not pending",
+                            "value": {"detail": "Only pending orders can be paid"},
+                        },
+                        "already_paid": {"summary": "Already paid", "value": {"detail": "Order already paid"}},
+                        "invalid_amount": {
+                            "summary": "Invalid amount",
+                            "value": {"detail": "Order has invalid total amount"},
+                        },
+                    }
+                }
+            },
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Invalid or missing token",
+            "content": {"application/json": {"example": {"detail": "Invalid token"}}},
+        },
+    },
 )
 async def create_payment(
     data: PaymentCreateRequestSchema,
@@ -179,6 +219,38 @@ async def create_payment(
     "/payments/webhook/",
     status_code=status.HTTP_200_OK,
     summary="Stripe webhook endpoint",
+    description="""
+    Webhook endpoint for Stripe payment events.
+    
+    **Handled Events:**
+    - `checkout.session.completed` - Payment successful, updates order status to PAID
+    - `checkout.session.expired` - Payment session expired, marks payment as CANCELED
+    
+    **Security:**
+    - Validates Stripe signature to ensure authenticity
+    - Only processes events from Stripe servers
+    
+    **Note:** This endpoint should be registered in Stripe Dashboard
+    """,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Invalid webhook signature or payload",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "missing_signature": {
+                            "summary": "Missing signature",
+                            "value": {"detail": "Missing Stripe signature header"},
+                        },
+                        "invalid_signature": {
+                            "summary": "Invalid signature",
+                            "value": {"detail": "Invalid webhook signature: ..."},
+                        },
+                    }
+                }
+            },
+        }
+    },
 )
 async def stripe_webhook(
     request: Request,
@@ -261,12 +333,29 @@ async def stripe_webhook(
     return {"status": "ignored", "event": event_type}
 
 
-@router.get("/payments/success", summary="Payment success redirect handler")
+@router.get(
+    "/payments/success",
+    summary="Payment success redirect handler",
+    description="""
+    Redirect endpoint after successful payment.
+    
+    Users are redirected here after completing payment on Stripe.
+    The actual payment status update happens via webhook.
+    """,
+)
 async def payment_success(session_id: str | None = None):
     return {"status": "success", "session_id": session_id}
 
 
-@router.get("/payments/cancel", summary="Payment cancel redirect handler")
+@router.get(
+    "/payments/cancel",
+    summary="Payment cancel redirect handler",
+    description="""
+    Redirect endpoint after canceled payment.
+    
+    Users are redirected here if they cancel payment on Stripe.
+    """,
+)
 async def payment_cancel():
     return {"status": "canceled"}
 
