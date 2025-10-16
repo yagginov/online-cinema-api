@@ -52,7 +52,10 @@ async def create_order(
             "status": order.status.value,
             "total_amount": order.total_amount,
             "created_at": order.created_at,
-            "items": [{"movie_id": it.movie_id, "price_at_order": it.price_at_order} for it in order.items],
+            "items": [
+                {"movie_id": it.movie_id, "movie_name": it.movie.name, "price_at_order": it.price_at_order}
+                for it in order.items
+            ],
         }
     )
 
@@ -91,7 +94,10 @@ async def list_orders(
                 "status": o.status.value,
                 "total_amount": o.total_amount,
                 "created_at": o.created_at,
-                "items": [{"movie_id": it.movie_id, "price_at_order": it.price_at_order} for it in o.items],
+                "items": [
+                    {"movie_id": it.movie_id, "movie_name": it.movie.name, "price_at_order": it.price_at_order}
+                    for it in o.items
+                ],
             }
         )
         for o in orders
@@ -130,7 +136,10 @@ async def get_order(
             "status": order.status.value,
             "total_amount": order.total_amount,
             "created_at": order.created_at,
-            "items": [{"movie_id": it.movie_id, "price_at_order": it.price_at_order} for it in order.items],
+            "items": [
+                {"movie_id": it.movie_id, "movie_name": it.movie.name, "price_at_order": it.price_at_order}
+                for it in order.items
+            ],
         }
     )
 
