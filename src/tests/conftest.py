@@ -21,9 +21,9 @@ from database.models.accounts import (
     RefreshToken,
     User,
     UserGroup,
-    UserGroupEnum,
 )
 from database.models.base import Base
+from database.models import UserGroupEnum
 from database.populate import CSVDatabaseSeeder
 from main import app
 from security.interfaces import JWTAuthManagerInterface
@@ -243,13 +243,13 @@ async def e2e_db_session():
 # @pytest_asyncio.fixture(scope="function")
 # async def seed_user_groups(db_session: AsyncSession):
 #     """
-#     Asynchronously seed the UserGroupModel table with default user groups.
-
+#     Asynchronously seed the UserGroup table with default user groups.
+#
 #     This fixture inserts all user groups defined in UserGroupEnum into the database and commits the transaction.
 #     It then yields the asynchronous database session for further testing.
 #     """
 #     groups = [{"name": group.value} for group in UserGroupEnum]
-#     await db_session.execute(insert(UserGroupModel).values(groups))
+#     await db_session.execute(insert(UserGroup).values(groups))
 #     await db_session.commit()
 #     yield db_session
 
