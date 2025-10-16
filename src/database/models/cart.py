@@ -23,8 +23,6 @@ class CartModel(Base):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = {"extend_existing": True}
-
     def __repr__(self):
         return f"<cart id: {self.id}, user id: {self.user_id}>"
 
