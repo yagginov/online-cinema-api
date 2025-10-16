@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 from typing import AsyncGenerator
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -15,6 +15,7 @@ from database import (
     get_db_contextmanager,
     reset_database,
 )
+from database.models import UserGroupEnum
 from database.models.accounts import (
     ActivationToken,
     PasswordResetToken,
@@ -23,7 +24,6 @@ from database.models.accounts import (
     UserGroup,
 )
 from database.models.base import Base
-from database.models import UserGroupEnum
 from database.populate import CSVDatabaseSeeder
 from main import app
 from security.interfaces import JWTAuthManagerInterface

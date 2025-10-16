@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, field_validator, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
 from database import validators
 from database.models import UserGroupEnum
 
@@ -69,6 +70,7 @@ class UserLoginResponseSchema(BaseModel):
 
 class UserLogoutRequestSchema(BaseModel):
     refresh_token: str
+
 
 class ChangeUserRoleRequestSchema(BaseModel):
     user_id: int = Field(0, description="ID of the user whose role will be changed")

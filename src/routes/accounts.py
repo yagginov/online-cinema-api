@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import cast, Annotated
+from typing import Annotated, cast
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
@@ -22,6 +22,7 @@ from database.models import UserGroupEnum
 from exceptions import BaseSecurityError
 from notifications.interfaces import EmailSenderInterface
 from schemas.accounts.accounts import (
+    ChangeUserRoleRequestSchema,
     MessageResponseSchema,
     PasswordResetCompleteRequestSchema,
     PasswordResetRequestSchema,
@@ -32,7 +33,7 @@ from schemas.accounts.accounts import (
     UserLoginResponseSchema,
     UserLogoutRequestSchema,
     UserRegistrationRequestSchema,
-    UserRegistrationResponseSchema, ChangeUserRoleRequestSchema,
+    UserRegistrationResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
 from security.permissions import require_admin
@@ -566,6 +567,7 @@ async def logout_user(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete refresh token.")
 
     return None
+
 
 @router.post(
     "/change-role/",
