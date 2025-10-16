@@ -3,7 +3,7 @@ from datetime import datetime, UTC
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base
+from database.models.base import Base
 
 
 class BaseInteraction(Base):
@@ -23,16 +23,6 @@ class BaseInteraction(Base):
         server_default=func.now(),
         nullable=False,
     )
-
-
-class FavoriteModel(BaseInteraction):
-    __tablename__ = "favorites"
-
-    __table_args__ = (UniqueConstraint("user_id", "movie_id", name="movie_favorite"),)
-
-    def __repr__(self):
-        return f"<Favorite(user_id='{self.user_id}', movie_id='{self.movie_id}')>"
-
 
 class RatingModel(BaseInteraction):
     __tablename__ = "ratings"

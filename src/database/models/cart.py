@@ -23,6 +23,8 @@ class CartModel(Base):
         cascade="all, delete-orphan",
     )
 
+    __table_args__ = {"extend_existing": True}
+
     def __repr__(self):
         return f"<cart id: {self.id}, user id: {self.user_id}>"
 
@@ -42,6 +44,7 @@ class CartItemModel(Base):
     )
 
     __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="uq_cart_movie"),)
+
 
     def __repr__(self):
         return f"<item id: {self.id}, cart id: {self.cart_id}>"
